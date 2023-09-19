@@ -22,11 +22,11 @@ fn main() {
     // Use some simple operations
     // to parse the input
     r.consume("Hello").unwrap();
-    r.consume(",");
+    r.consume(",").unwrap();
     r.skip_whitespace();
     let name = r.read_snake().unwrap(); // byte_reader
     let name_starts_at = r.column();    // 8
-    r.consume("!");
+    r.consume("!").unwrap();
 
     println!("Greeted to {name}.");
     println!("The name starts at column {name_start_at} on line 1.");
