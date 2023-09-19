@@ -1,6 +1,5 @@
 <h1 align="center">byte reader</h1>
-
-A **minimum** byte-by-byte reader for parsing input.
+<p align="center">A **minimum** byte-by-byte reader for parsing input.</p>
 
 <div align="right">
     <img alt="build check status of byte_reader" src="https://github.com/kana-rus/byte_reader/actions/workflows/check.yml/badge.svg"/>
