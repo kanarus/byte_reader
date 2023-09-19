@@ -2,9 +2,7 @@ use crate::Reader;
 use std::format as f;
 
 #[test] fn test_consume() {
-    let mut r = Reader::owned(f!(
-        "Hello, world!"
-    ).into_bytes()).unwrap();
+    let mut r = Reader::new("Hello, world!".as_bytes());
 
     r.advance_by(1);
     assert_eq!(r.remained(), b"ello, world!");
@@ -14,9 +12,9 @@ use std::format as f;
 }
 
 #[test] fn test_parse_ident() {
-    let mut r = Reader::owned(f!(
+    let mut r = Reader::new(f!(
         "Hello, world! I am a Reader!"
-    ).into_bytes()).unwrap();
+    ).into_bytes());
 
     let ident = r.read_snake().unwrap();
     assert_eq!(ident, "Hello");
@@ -33,9 +31,9 @@ use std::format as f;
 }
 
 #[test] fn test_parse_string_literal() {
-    let mut r = Reader::owned(f!("\
+    let mut r = Reader::new(f!("\
         \"Hello,\" He said, \"I am Reader!\"\
-    ").into_bytes()).unwrap();
+    ").into_bytes());
 
     let lit = r.read_string().unwrap();
     assert_eq!(lit, "Hello,");
@@ -56,13 +54,13 @@ use std::format as f;
 }
 
 #[test] fn test_parse_int() {
-    let mut r = Reader::owned("\
+    let mut r = Reader::new("\
         model Post {\n\
           title     String @db.VarChar(200)\n\
           n_authors Int    @default(1)\n\
           z_flag    Int    @default(-42)\n\
         }\
-    ".to_string().into_bytes()).unwrap();
+    ".to_string().into_bytes());
 
     assert!(r.consume("model").is_ok());
     r.skip_whitespace();
