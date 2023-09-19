@@ -1,13 +1,3 @@
-<h1 align="center">byte reader</h1>
-<p align="center">A <strong>minimum</strong> byte-by-byte reader for parsing input.</p>
-
-<div align="right">
-    <img alt="build check status of byte_reader" src="https://github.com/kana-rus/byte_reader/actions/workflows/check.yml/badge.svg"/>
-    <img alt="test status of byte_reader" src="https://github.com/kana-rus/byte_reader/actions/workflows/test.yml/badge.svg"/>
-</div>
-
-<h2><a href="https://github.com/kana-rus/byte_reader/tree/main/src/examples/usage.rs">Usage</a></h2>
-```rust
 use byte_reader::Reader;
 
 fn main() {
@@ -31,5 +21,3 @@ fn main() {
     println!("Greeted to `{name}`.");
     println!("The name starts at column {name_column} on line {name_line}.");
 }
-
-```
