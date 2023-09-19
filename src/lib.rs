@@ -13,23 +13,7 @@ pub struct Reader<'b> {
 }
 
 impl<'b> Reader<'b> {
-    // pub fn owned(content: Vec<u8>) -> Result<Self, Cow<'static, str>> {
-    //     Ok(Self {
-    //         content: Bytes::Owned(content),
-    //         current_idx:    0,
-    //         current_line:   1,
-    //         current_column: 1,
-    //     })
-    // }
-    // pub fn borrowed(content: &'b [u8]) -> Result<Self, Cow<'static, str>> {
-    //     Ok(Self {
-    //         content: Bytes::Borrowed(content),
-    //         current_idx:    0,
-    //         current_line:   1,
-    //         current_column: 1,
-    //     })
-    // }
-
+    /// Generate new `Reader` from `Vec<u8>` or `&'b [u8]`
     pub fn new(content: impl IntoBytes<'b>) -> Self {
         let content = content.into_bytes();
         Self {

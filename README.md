@@ -14,10 +14,10 @@ use byte_reader::Reader;
 fn main() {
     // Get a `&[u8]` or `Vec<u8>` input from
     // a File, stanard input, or something
-    let sample_input = b"Hello, byte_reader!";
+    let sample_input = b"Hello, byte_reader!".as_bytes();
 
     // Create mutable `r`
-    let mut r = Reader::borrowed(sample_input);
+    let mut r = Reader::new(sample_input);
 
     // Use some simple operations
     // to parse the input
