@@ -7,6 +7,7 @@
 </div>
 
 <h2><a href="https://github.com/kana-rus/byte_reader/tree/main/src/examples/usage.rs">Usage</a></h2>
+
 ```rust
 use byte_reader::Reader;
 
