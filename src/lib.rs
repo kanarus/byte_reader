@@ -122,6 +122,18 @@ impl<'b> Reader<'b> {
         Err(Cow::Owned(f!("Expected oneof {} but none matched", tokens.map(|t| f!("`{t}`")).join(", "))))
     }
 
+    /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String`
+    pub fn read_camel(&mut self) -> Result<String, Cow<'static, str>> {
+        let mut ident_len = 0;
+        while matches!(self.remained()[ident_len], b'a'..=b'z' | b'A'..=b'Z') {
+            ident_len += 1
+        }
+        if ident_len == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
+
+        let ident = unsafe { String::from_utf8_unchecked(self.remained()[..ident_len].to_vec()) };
+        self.advance_by(ident_len);
+        Ok(ident)
+    }
     /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String`
     pub fn read_snake(&mut self) -> Result<String, Cow<'static, str>> {
         let mut ident_len = 0;
