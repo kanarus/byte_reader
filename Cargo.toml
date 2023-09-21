@@ -9,7 +9,7 @@ repository    = "https://github.com/kana-rus/byte_reader"
 readme        = "README.md"
 license       = "MIT"
 description   = "A minimal byte-by-byte reader for parsing input"
-keywords      = ["minimal", "lightweight", "byte", "bytes", "parser"]
+keywords      = ["minimal", "lightweight", "bytes", "reader", "parser"]
 categories    = ["encoding", "rust-patterns", "text-processing"]
 
 [features]
