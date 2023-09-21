@@ -8,8 +8,8 @@ use bytes::{Bytes, IntoBytes};
 pub struct Reader<'b> {
     content:        Bytes<'b>,
     current_idx:    usize,
-    current_line:   usize,
-    current_column: usize,
+    #[cfg(feature="location")] current_line:   usize,
+    #[cfg(feature="location")] current_column: usize,
 }
 
 impl<'b> Reader<'b> {
@@ -19,8 +19,8 @@ impl<'b> Reader<'b> {
         Self {
             content,
             current_idx:    0,
-            current_line:   1,
-            current_column: 1,
+            #[cfg(feature="location")] current_line:   1,
+            #[cfg(feature="location")] current_column: 1,
         }
     }
 }
@@ -30,10 +30,12 @@ impl<'b> Reader<'b> {
         &self.content[self.current_idx..]
     }
 
+    #[cfg(feature="location")]
     /// Returns current line number of the cursor (starts from 1)
     #[inline] pub fn line(&self) -> usize {
         self.current_line
     }
+    #[cfg(feature="location")]
     /// Returns current column number of the cursor (starts from 1)
     #[inline] pub fn column(&self) -> usize {
         self.current_column
@@ -45,21 +47,21 @@ impl<'b> Reader<'b> {
         let remained = self.remained();
         let add_idx  = max_bytes.min(remained.len());
 
-        let mut line   = self.current_line.clone();
-        let mut column = self.current_column.clone();
-
-        for b in &remained[..add_idx] {
-            if &b'\n' != b {
-                column += 1
-            } else {
-                line += 1; column = 1
+        #[cfg(feature="location")] {
+            let mut line   = self.current_line.clone();
+            let mut column = self.current_column.clone();
+            for b in &remained[..add_idx] {
+                if &b'\n' != b {
+                    column += 1
+                } else {
+                    line += 1; column = 1
+                }
             }
+            self.current_line   = line;
+            self.current_column = column;
         }
 
         self.current_idx += add_idx;
-        self.current_line   = line;
-        self.current_column = column;
-
         &self.content[start_idx..(start_idx + add_idx)]
     }
 }
