@@ -24,13 +24,9 @@ fn main() {
     r.consume("Hello").unwrap();
     r.consume(",").unwrap();
     r.skip_whitespace();
-    let name_line   = r.line();         // 1
-    let name_column = r.column();       // 8
     let name = r.read_snake().unwrap(); // byte_reader
     r.consume("!").unwrap();
 
     println!("Greeted to `{name}`.");
-    println!("The name starts at column {name_column} on line {name_line}.");
 }
-
 ```

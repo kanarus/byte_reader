@@ -1,3 +1,5 @@
+#![doc(html_root_url = "https://docs.rs/byte_reader")]
+
 mod bytes;
 #[cfg(test)] mod test;
 
