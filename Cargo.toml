@@ -1,6 +1,6 @@
 [package]
 name          = "byte_reader"
-version       = "0.1.1"
+version       = "0.1.2"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 documentation = "https://docs.rs/byte_reader"
@@ -8,7 +8,7 @@ homepage      = "https://crates.io/crates/byte_reader"
 repository    = "https://github.com/kana-rus/byte_reader"
 readme        = "README.md"
 license       = "MIT"
-description   = "Minimum byte-by-byte reader for parsing input on a syntax"
+description   = "A minimal byte-by-byte reader for parsing input"
 keywords      = ["minimum", "lightweight", "byte", "bytes", "parser"]
 categories    = ["encoding", "rust-patterns", "text-processing"]
 
