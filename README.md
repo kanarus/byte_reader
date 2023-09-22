@@ -9,7 +9,7 @@
 ## Use case
 Following situation:
 
-> I want to read and parse some input, but it's a small and simple parsing task, so I'd rather avoid adding a heavy crate (like [nom](https://crates.io/crates/nom), [nom8](https://crates.io/crates/nom8) or others) to my `dependencies`...
+> I want to read and parse some input, but it's a **small** and **simple** parsing task, so I'd rather avoid adding a *heavy* crate like [nom](https://crates.io/crates/nom), [nom8](https://crates.io/crates/nom8) to my `dependencies`...
 
 <br/>
 
