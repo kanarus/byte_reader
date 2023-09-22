@@ -1,35 +1,33 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
-
 mod bytes;
 #[cfg(test)] mod test;
 
-use std::{borrow::Cow, format as f};
-use bytes::{Bytes, IntoBytes};
+use bytes::Bytes;
+use std::{format as f, borrow::Cow};
 
 
-pub struct Reader<'b> {
-    content:        Bytes<'b>,
+pub struct Reader<B: Bytes> {
+    content:        B,
     current_idx:    usize,
     #[cfg(feature="location")] current_line:   usize,
     #[cfg(feature="location")] current_column: usize,
 }
-
-impl<'b> Reader<'b> {
+    
+impl<B: Bytes> Reader<B> {
     /// Generate new `Reader` from `Vec<u8>` or `&'b [u8]`
-    pub fn new(content: impl IntoBytes<'b>) -> Self {
-        let content = content.into_bytes();
+    pub fn new(content: B) -> Self {
         Self {
             content,
-            current_idx:    0,
+            current_idx: 0,
             #[cfg(feature="location")] current_line:   1,
             #[cfg(feature="location")] current_column: 1,
         }
     }
 }
 
-impl<'b> Reader<'b> {
+impl<B: Bytes> Reader<B> {
     #[inline(always)] pub(crate) fn remained(&self) -> &[u8] {
-        &self.content[self.current_idx..]
+        &self.content.bytes()[self.current_idx..]
     }
 
     #[cfg(feature="location")]
@@ -64,11 +62,11 @@ impl<'b> Reader<'b> {
         }
 
         self.current_idx += add_idx;
-        &self.content[start_idx..(start_idx + add_idx)]
+        &self.content.bytes()[start_idx..(start_idx + add_idx)]
     }
 }
 
-impl<'b> Reader<'b> {
+impl<B: Bytes> Reader<B> {
     /// Read while the condition holds for the byte
     pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
         let mut until = 0;
