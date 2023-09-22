@@ -93,7 +93,7 @@ use std::format as f;
     assert_eq!(r.read_snake().unwrap(), "VarChar");
     assert_eq!(r.peek().unwrap(), &b'('); r.advance_by(1);
 
-    let int = r.read_unsigned_int().unwrap();
+    let int = r.read_uint().unwrap();
     assert_eq!(int, 200);
     assert_eq!(r.peek().unwrap(), &b')'); r.advance_by(1);
 

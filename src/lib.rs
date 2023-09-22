@@ -1,8 +1,9 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
-mod bytes;
-#[cfg(test)] mod test;
 
-use bytes::Bytes;
+mod traits;
+#[cfg(test)] mod _test;
+
+use traits::*;
 use std::{format as f, borrow::Cow};
 
 
@@ -70,9 +71,8 @@ impl<B: Bytes> Reader<B> {
     }
 
     /// Advance by `max_bytes` bytes (or, if remained bytes is shorter than `max_bytes`, read all remained bytes)
-    #[cfg_attr(not(feature="location"), inline)] pub fn advance_by(&mut self, max_bytes: usize) {
-        let by = max_bytes.min(self.remained_len());
-        self.advance_unchecked_by(by)
+    #[inline(always)] pub fn advance_by(&mut self, max_bytes: usize) {
+        self.advance_unchecked_by(max_bytes.min(self.remained_len()))
     }
 }
 
@@ -208,7 +208,7 @@ impl<B: Bytes> Reader<B> {
         Ok(unsafe { String::from_utf8_unchecked(literal_bytes) })
     }
     /// Read an unsigned integer literal like `42`, `123` as `usize`
-    pub fn read_unsigned_int(&mut self) -> Result<usize, Cow<'static, str>> {
+    pub fn read_uint(&mut self) -> Result<usize, Cow<'static, str>> {
         let mut int = 0;
 
         let mut degit = 0;
@@ -226,7 +226,7 @@ impl<B: Bytes> Reader<B> {
     /// Read an integer literal like `42`, `-1111` as `isize`
     #[inline] pub fn read_int(&mut self) -> Result<isize, Cow<'static, str>> {
         let negetive = self.consume("-").is_ok();
-        let absolute = self.read_unsigned_int()? as isize;
+        let absolute = self.read_uint()? as isize;
         
         Ok(if negetive { -absolute } else {absolute})
     }

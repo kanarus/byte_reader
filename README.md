@@ -11,6 +11,8 @@ Following situation:
 
 > I want to read and parse some input, but it's a small and simple parsing task, so I'd rather avoid adding a heavy crate (like [nom8](https://crates.io/crates/nom8)) to my `dependencies`...
 
+<br/>
+
 <h2><a href="https://github.com/kana-rus/byte_reader/blob/main/examples/usage.rs">Usage</a></h2>
 
 ```rust
@@ -36,6 +38,8 @@ fn main() {
 }
 ```
 
+<br/>
+
 ## Operations
 - `advance_by`, `advance_unchecked_by`
 - `peek`, `peek2`, `peek3`
@@ -44,7 +48,7 @@ fn main() {
 - `consume`, `consume_oneof`
 - `read_while`
 - `read_camel`, `read_snake`, `read_kebab`
-- `read_string`, `read_unsigned_int`, `read_int`
+- `read_string`, `read_uint`, `read_int`
 
 And, with `location` feature, you can track the reader's parsing location ( **line** and **column** ) in the input bytes :
 
