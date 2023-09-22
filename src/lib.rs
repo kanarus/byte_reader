@@ -80,10 +80,12 @@ impl<B: Bytes> Reader<B> {
     /// Read while the condition holds for the byte
     pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
         let start_idx = self.current_idx;
-        while self.peek().is_some_and(|b| condition(b)) {
-            self.advance_unchecked_by(1)
+        let mut len = 0;
+        while self.remained().get(len).is_some_and(|b| condition(b)) {
+            len += 1
         }
-        &self.content()[start_idx..self.current_idx]
+        self.advance_unchecked_by(len);
+        &self.content()[start_idx..(start_idx+len)]
     }
 
     /// Read next one byte, or return None if the reamined bytes is empty
@@ -188,15 +190,20 @@ impl<B: Bytes> Reader<B> {
     /// This doesn't handle escape sequences
     pub fn read_string(&mut self) -> Result<String, Cow<'static, str>> {
         self.consume("\"")?;
-        let mut literal_bytes = Vec::new();
-        while let Some(b) = self.peek() {
-            if b != &b'"' {
-                literal_bytes.push(*b)
-            } else {break}
-        }
+        let content = self.read_while(|b| b != &b'"').to_vec();
         self.consume("\"")?;
 
-        Ok(unsafe { String::from_utf8_unchecked(literal_bytes) })
+        String::from_utf8(content).map_err(|e| Cow::Owned(f!("{e}")))
+    }
+    /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
+    /// 
+    /// This doesn't handle escape sequences
+    pub unsafe fn read_string_unchecked(&mut self) -> Result<String, Cow<'static, str>> {
+        self.consume("\"")?;
+        let content = self.read_while(|b| b != &b'"').to_vec();
+        self.consume("\"")?;
+
+        Ok(String::from_utf8_unchecked(content))
     }
     /// Read an unsigned integer literal like `42`, `123` as `usize`
     pub fn read_uint(&mut self) -> Result<usize, Cow<'static, str>> {

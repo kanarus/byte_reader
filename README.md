@@ -47,7 +47,8 @@ fn main() {
 - `consume`, `consume_oneof`
 - `skip_whitespace`
 - `read_while`
-- `read_string`, `read_uint`, `read_int`
+- `read_uint`, `read_int`
+- `read_string`, `read_string_unchecked`
 - `read_camel`, `read_snake`, `read_kebab`
 
 And, with `location` feature, you can track the reader's parsing location ( **line** and **column** ) in the input bytes :
