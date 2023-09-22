@@ -40,18 +40,9 @@ impl<B: Bytes> Reader<B> {
     #[inline(always)] pub(crate) fn remained(&self) -> &[u8] {
         &self.content()[self.current_idx..]
     }
-    #[inline(always)] pub(crate) fn remained_len(&self) -> usize {
-        self.content().len() - self.current_idx + 1
-    }
 }
 
 impl<B: Bytes> Reader<B> {
-    /// Advance by `n` bytes **without checking** if the remained bytes is not shorter then `n`
-    /// 
-    /// <br/>
-    /// 
-    /// # Panic
-    /// - When the remained bytes is shorter than `n`
     #[cfg_attr(not(feature="location"), inline)] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.current_line.clone();
@@ -72,7 +63,7 @@ impl<B: Bytes> Reader<B> {
 
     /// Advance by `max_bytes` bytes (or, if remained bytes is shorter than `max_bytes`, read all remained bytes)
     #[inline(always)] pub fn advance_by(&mut self, max_bytes: usize) {
-        self.advance_unchecked_by(max_bytes.min(self.remained_len()))
+        self.advance_unchecked_by(max_bytes.min(self.remained().len()))
     }
 }
 
