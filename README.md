@@ -45,7 +45,7 @@ fn main() {
 - `next`, `next_if`
 - `peek`, `peek2`, `peek3`
 - `consume`, `consume_oneof`
-- `skip_whitespace`
+- `skip_while`, `skip_whitespace`
 - `read_while`
 - `read_uint`, `read_int`
 - `read_string`, `read_string_unchecked`

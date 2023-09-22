@@ -68,18 +68,27 @@ impl<B: Bytes> Reader<B> {
 }
 
 impl<B: Bytes> Reader<B> {
-    /// Read while the condition holds for the byte
-    pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
-        let start_idx = self.current_idx;
+    /// `.skip_while(|b| b.is_ascii_whitespace())`
+    #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
         let mut len = 0;
         while self.remained().get(len).is_some_and(|b| condition(b)) {
             len += 1
         }
         self.advance_unchecked_by(len);
-        &self.content()[start_idx..(start_idx+len)]
+    }
+    /// Skip while the byte is ascii-whitespace
+    #[inline] pub fn skip_whitespace(&mut self) {
+        self.skip_while(|b| b.is_ascii_whitespace())
     }
 
-    /// Read next one byte, or return None if the reamined bytes is empty
+    /// Read next byte while the condition holds
+    #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
+        let start_idx = self.current_idx;
+        self.skip_while(condition);
+        &self.content()[start_idx..self.current_idx]
+    }
+
+    /// Read next one byte, or return None if the remained bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.current_idx;
         self.advance_by(1);
@@ -104,15 +113,6 @@ impl<B: Bytes> Reader<B> {
         self.remained().get(2)
     }
 
-    /// Advance while the byte is ascii-whitespace
-    #[inline] pub fn skip_whitespace(&mut self) {
-        let mut whitespace_len = 0;
-        while self.remained().get(whitespace_len).is_some_and(|b| b.is_ascii_whitespace()) {
-            whitespace_len += 1
-        }
-        self.advance_unchecked_by(whitespace_len)
-    }
-
     /// Read `token` if the remained bytes starts with it, otherwise return `Err`
     #[inline] pub fn consume(&mut self, token: &'static str) -> Result<(), Cow<'static, str>> {
         self.remained().starts_with(token.as_bytes())
@@ -124,30 +124,30 @@ impl<B: Bytes> Reader<B> {
     /// Returns `Err` if none matched.
     pub fn consume_oneof<const N: usize>(&mut self, tokens: [&'static str; N]) -> Result<usize, Cow<'static, str>> {
         for i in 0..tokens.len() {
-            if self.remained().starts_with(&tokens[i].as_bytes()) {
+            if self.remained().starts_with(tokens[i].as_bytes()) {
                 self.advance_by(tokens[i].len());
                 return Ok(i)
             }
         }
-        Err(Cow::Owned(f!("Expected oneof {} but none matched", tokens.map(|t| f!("`{t}`")).join(", "))))
+        (|| Err(Cow::Owned(f!("Expected oneof {} but none matched", tokens.map(|t| f!("`{t}`")).join(", ")))))()
     }
 
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String`
     #[inline] pub fn read_camel(&mut self) -> Result<String, Cow<'static, str>> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec();
-        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
+        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a camelCase word but it wasn't found"))}
         Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String`
     #[inline] pub fn read_snake(&mut self) -> Result<String, Cow<'static, str>> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_')).to_vec();
-        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
+        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a snake_case word but it wasn't found"))}
         Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String`
     #[inline] pub fn read_kebab(&mut self) -> Result<String, Cow<'static, str>> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-')).to_vec();
-        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
+        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a kebab-case word but it wasn't found"))}
         Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
 
