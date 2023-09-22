@@ -41,14 +41,14 @@ fn main() {
 <br/>
 
 ## Operations
-- `advance_by`, `advance_unchecked_by`
+- `advance_by`
+- `next`, `next_if`
 - `peek`, `peek2`, `peek3`
-- `pop`, `pop_if`, `pop_unchecked`
-- `skip_whitespace`
 - `consume`, `consume_oneof`
+- `skip_whitespace`
 - `read_while`
-- `read_camel`, `read_snake`, `read_kebab`
 - `read_string`, `read_uint`, `read_int`
+- `read_camel`, `read_snake`, `read_kebab`
 
 And, with `location` feature, you can track the reader's parsing location ( **line** and **column** ) in the input bytes :
 

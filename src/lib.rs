@@ -87,24 +87,13 @@ impl<B: Bytes> Reader<B> {
     }
 
     /// Read next one byte, or return None if the reamined bytes is empty
-    #[inline] pub fn pop(&mut self) -> Option<u8> {
+    #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.current_idx;
         self.advance_by(1);
         (self.current_idx > here).then(|| self.content()[here])
     }
-    /// Read next one byte **without checking** if it exisis
-    /// 
-    /// <br/>
-    /// 
-    /// # Panic
-    /// - When the empty remained bytes is empty
-    #[inline] pub fn pop_unchecked(&mut self) -> u8 {
-        let here = self.current_idx;
-        self.advance_unchecked_by(1);
-        self.content()[here]
-    }
     /// Read next one byte if the condition holds for it
-    #[inline] pub fn pop_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
+    #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
         let value = self.peek()?.clone();
         condition(&value).then(|| {self.advance_unchecked_by(1); value})
     }
@@ -200,8 +189,10 @@ impl<B: Bytes> Reader<B> {
     pub fn read_string(&mut self) -> Result<String, Cow<'static, str>> {
         self.consume("\"")?;
         let mut literal_bytes = Vec::new();
-        while self.peek().is_some_and(|b| &b'"' != b) {
-            literal_bytes.push(self.pop_unchecked())
+        while let Some(b) = self.peek() {
+            if b != &b'"' {
+                literal_bytes.push(*b)
+            } else {break}
         }
         self.consume("\"")?;
 
@@ -212,8 +203,7 @@ impl<B: Bytes> Reader<B> {
         let mut int = 0;
 
         let mut degit = 0;
-        loop {
-            let Some(b) = self.peek() else {break};
+        while let Some(b) = self.peek() {
             match b {
                 b'0'..=b'9' => {int = int * 10 + (*b - b'0') as usize; degit += 1; self.advance_by(1)}
                 _ => break,
