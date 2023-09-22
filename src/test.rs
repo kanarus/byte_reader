@@ -1,7 +1,7 @@
 use crate::Reader;
 use std::format as f;
 
-#[test] fn test_consume() {
+#[test] fn test_advance() {
     let mut r = Reader::new("Hello, world!".as_bytes());
 
     r.advance_by(1);
@@ -9,6 +9,15 @@ use std::format as f;
 
     r.advance_by(3);
     assert_eq!(r.remained(), b"o, world!");
+}
+
+#[test] fn test_read_while() {
+    let mut r = Reader::new("Hello, world!".as_bytes());
+    assert_eq!(
+        r.read_while(|b| ! b.is_ascii_whitespace()),
+        b"Hello,"
+    );
+    assert_eq!(r.remained(), b" world!");
 }
 
 #[test] fn test_parse_ident() {
@@ -54,6 +63,9 @@ use std::format as f;
 }
 
 #[test] fn test_parse_int() {
+    let mut r = Reader::new("42".as_bytes());
+    assert_eq!(r.read_int(), Ok(42));
+
     let mut r = Reader::new("\
         model Post {\n\
           title     String @db.VarChar(200)\n\
@@ -62,12 +74,15 @@ use std::format as f;
         }\
     ".to_string().into_bytes());
 
+    #[cfg(feature="location")] assert_eq!(r.line(), 1);
     assert!(r.consume("model").is_ok());
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "Post");
     r.skip_whitespace();
     assert_eq!(r.peek().unwrap(), &b'{'); r.advance_by(1);
     r.skip_whitespace();
+
+    #[cfg(feature="location")] assert_eq!(r.line(), 2);
     assert_eq!(r.read_snake().unwrap(), "title");
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "String");
@@ -83,6 +98,8 @@ use std::format as f;
     assert_eq!(r.peek().unwrap(), &b')'); r.advance_by(1);
 
     r.skip_whitespace();
+
+    #[cfg(feature="location")] assert_eq!(r.line(), 3);
     assert_eq!(r.read_snake().unwrap(), "n_authors");
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "Int");
@@ -96,6 +113,8 @@ use std::format as f;
     assert_eq!(r.peek().unwrap(), &b')'); r.advance_by(1);
 
     r.skip_whitespace();
+
+    #[cfg(feature="location")] assert_eq!(r.line(), 4);
     assert_eq!(r.read_snake().unwrap(), "z_flag");
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "Int");
@@ -109,6 +128,8 @@ use std::format as f;
     assert_eq!(r.peek().unwrap(), &b')'); r.advance_by(1);
 
     r.skip_whitespace();
+
+    #[cfg(feature="location")] assert_eq!(r.line(), 5);
     assert_eq!(r.peek().unwrap(), &b'}'); r.advance_by(1);
     assert_eq!(r.peek(), None)
 }

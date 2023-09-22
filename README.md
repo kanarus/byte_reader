@@ -1,10 +1,15 @@
-<h1 align="center">byte reader</h1>
+<h1 align="center">byte_reader</h1>
 <p align="center">A <strong>minimal</strong> byte-by-byte reader for parsing input.</p>
 
 <div align="right">
     <img alt="build check status of byte_reader" src="https://github.com/kana-rus/byte_reader/actions/workflows/check.yml/badge.svg"/>
     <img alt="test status of byte_reader" src="https://github.com/kana-rus/byte_reader/actions/workflows/test.yml/badge.svg"/>
 </div>
+
+## Use case
+Following situation:
+
+> I want to read and parse some input, but it's a small and simple parsing task, so I'd rather avoid adding a heavy crate (like [nom8](https://crates.io/crates/nom8)) to my `dependencies`...
 
 <h2><a href="https://github.com/kana-rus/byte_reader/blob/main/examples/usage.rs">Usage</a></h2>
 
@@ -31,10 +36,20 @@ fn main() {
 }
 ```
 
+## Operations
+- `advance_by`, `advance_unchecked_by`
+- `peek`, `peek2`, `peek3`
+- `pop`, `pop_if`, `pop_unchecked`
+- `skip_whitespace`
+- `consume`, `consume_oneof`
+- `read_while`
+- `read_camel`, `read_snake`, `read_kebab`
+- `read_string`, `read_unsigned_int`, `read_int`
+
 And, with `location` feature, you can track the reader's parsing location ( **line** and **column** ) in the input bytes :
 
 ```rust
-/* enable `location` feature */
+/* enable "location" feature */
 use byte_reader::Reader;
 
 fn main() {
