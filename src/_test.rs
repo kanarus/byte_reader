@@ -1,6 +1,16 @@
 use crate::Reader;
 use std::format as f;
 
+#[test] fn test_whitespace() {
+    let mut r = Reader::new(" ".as_bytes());
+    r.skip_whitespace();
+    assert!(r.remained().is_empty());
+
+    let mut r = Reader::new("  a".as_bytes());
+    r.skip_whitespace();
+    assert_eq!(r.remained(), b"a");
+}
+
 #[test] fn test_advance() {
     let mut r = Reader::new("Hello, world!".as_bytes());
 

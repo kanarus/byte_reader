@@ -115,9 +115,11 @@ impl<B: Bytes> Reader<B> {
 
     /// Advance while the byte is ascii-whitespace
     #[inline] pub fn skip_whitespace(&mut self) {
-        while self.remained().first().is_some_and(|b| b.is_ascii_whitespace()) {
-            self.advance_unchecked_by(1)
+        let mut whitespace_len = 0;
+        while self.remained().get(whitespace_len).is_some_and(|b| b.is_ascii_whitespace()) {
+            whitespace_len += 1
         }
+        self.advance_unchecked_by(whitespace_len)
     }
 
     /// Read `token` if the remained bytes starts with it, otherwise return `Err`
@@ -141,48 +143,21 @@ impl<B: Bytes> Reader<B> {
 
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String`
     #[inline] pub fn read_camel(&mut self) -> Result<String, Cow<'static, str>> {
-        let mut ident_len = 0;
-        while matches!(
-            self.remained().get(ident_len),
-            Some(b'a'..=b'z' | b'A'..=b'Z')
-        ) {
-            ident_len += 1
-        }
-        if ident_len == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
-
-        let ident = unsafe { String::from_utf8_unchecked(self.remained()[..ident_len].to_vec()) };
-        self.advance_unchecked_by(ident_len);
-        Ok(ident)
+        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec();
+        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
+        Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String`
     #[inline] pub fn read_snake(&mut self) -> Result<String, Cow<'static, str>> {
-        let mut ident_len = 0;
-        while matches!(
-            self.remained().get(ident_len),
-            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_')
-        ) {
-            ident_len += 1
-        }
-        if ident_len == 0 {return Err(Cow::Borrowed("Expected an snake_case word but it wasn't found"))}
-
-        let ident = unsafe {String::from_utf8_unchecked(self.remained()[..ident_len].to_vec())};
-        self.advance_unchecked_by(ident_len);
-        Ok(ident)
+        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_')).to_vec();
+        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
+        Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String`
     #[inline] pub fn read_kebab(&mut self) -> Result<String, Cow<'static, str>> {
-        let mut ident_len = 0;
-        while matches!(
-            self.remained().get(ident_len),
-            Some(b'a'..=b'z' | b'A'..=b'Z' | b'-')
-        ) {
-            ident_len += 1
-        }
-        if ident_len == 0 {return Err(Cow::Borrowed("Expected an kebab-case word but it wasn't found"))}
-
-        let ident = unsafe { String::from_utf8_unchecked(self.remained()[..ident_len].to_vec()) };
-        self.advance_unchecked_by(ident_len);
-        Ok(ident)
+        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-')).to_vec();
+        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected an camelCase word but it wasn't found"))}
+        Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
 
     /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
@@ -206,19 +181,11 @@ impl<B: Bytes> Reader<B> {
         Ok(String::from_utf8_unchecked(content))
     }
     /// Read an unsigned integer literal like `42`, `123` as `usize`
-    pub fn read_uint(&mut self) -> Result<usize, Cow<'static, str>> {
-        let mut int = 0;
+    #[inline] pub fn read_uint(&mut self) -> Result<usize, Cow<'static, str>> {
+        let digits = self.read_while(|b| &b'0' <= b && b <= &b'9');
+        if digits.len() == 0 {return Err(Cow::Borrowed("Expected an integer but not found"))}
 
-        let mut degit = 0;
-        while let Some(b) = self.peek() {
-            match b {
-                b'0'..=b'9' => {int = int * 10 + (*b - b'0') as usize; degit += 1; self.advance_by(1)}
-                _ => break,
-            }
-        }
-        if degit == 0 {return Err(Cow::Borrowed("Expected an integer but not found"))}
-
-        Ok(int)
+        Ok(digits.into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as usize))
     }
     /// Read an integer literal like `42`, `-1111` as `isize`
     #[inline] pub fn read_int(&mut self) -> Result<isize, Cow<'static, str>> {
