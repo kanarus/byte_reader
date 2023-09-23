@@ -114,7 +114,7 @@ impl<B: Bytes> Reader<B> {
     }
 
     /// Read `token` if the remained bytes starts with it, otherwise return `Err`
-    #[inline] pub fn consume(&mut self, token: &'static str) -> Result<(), Cow<'static, str>> {
+    #[inline] pub fn consume(&mut self, token: &str) -> Result<(), Cow<'static, str>> {
         self.remained().starts_with(token.as_bytes())
             .then(|| self.advance_unchecked_by(token.len()))
             .ok_or_else(|| Cow::Owned(f!("Expected token `{token}` but not found")))
@@ -122,7 +122,7 @@ impl<B: Bytes> Reader<B> {
     /// Read first token in `tokens` that the remained bytes starts with, and returns the index of the (matched) token.
     /// 
     /// Returns `Err` if none matched.
-    pub fn consume_oneof<const N: usize>(&mut self, tokens: [&'static str; N]) -> Result<usize, Cow<'static, str>> {
+    pub fn consume_oneof<const N: usize>(&mut self, tokens: [&str; N]) -> Result<usize, Cow<'static, str>> {
         for i in 0..tokens.len() {
             if self.remained().starts_with(tokens[i].as_bytes()) {
                 self.advance_by(tokens[i].len());
