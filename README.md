@@ -41,7 +41,7 @@ fn main() {
 <br/>
 
 ## Operations
-- `advance_by`
+- `advance_by`, `rewind_by`
 - `next`, `next_if`
 - `peek`, `peek2`, `peek3`
 - `consume`, `consume_oneof`
@@ -51,7 +51,13 @@ fn main() {
 - `read_string`, `read_string_unchecked`
 - `read_camel`, `read_snake`, `read_kebab`
 
-And, with `location` feature, you can track the reader's parsing location ( **line** and **column** ) in the input bytes :
+<br/>
+
+## Features
+- `"location"`
+
+You can track the reader's parsing location ( **line** and **column** ) in the input bytes.<br/>
+When this feature is activated, `rewind_by` operation is NOT available.
 
 ```rust
 /* enable "location" feature */

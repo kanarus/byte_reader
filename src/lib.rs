@@ -1,10 +1,7 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
-mod traits;
+mod traits; use traits::*;
 #[cfg(test)] mod _test;
-
-use traits::*;
-use std::{format as f, borrow::Cow};
 
 
 pub struct Reader<B: Bytes> {
@@ -60,10 +57,20 @@ impl<B: Bytes> Reader<B> {
 
         self.current_idx += n;
     }
+    #[cfg(not(feature="location"))] pub(crate) fn rewind_unchecked_by(&mut self, n: usize) {
+        self.current_idx -= n;
+    }
 
-    /// Advance by `max_bytes` bytes (or, if remained bytes is shorter than `max_bytes`, read all remained bytes)
-    #[inline(always)] pub fn advance_by(&mut self, max_bytes: usize) {
-        self.advance_unchecked_by(max_bytes.min(self.remained().len()))
+    /// Advance by `max` bytes (or, if remained bytes is shorter than `max`, read all remained bytes)
+    #[inline(always)] pub fn advance_by(&mut self, max: usize) {
+        self.advance_unchecked_by(max.min(self.remained().len()))
+    }
+
+    /// Rewind by `max` bytes (or, if already-read bytes is shorter than `max`, rewind all)
+    /// 
+    /// available only when `"location"` feature is **dis**abled
+    #[cfg(not(feature="location"))] pub fn rewind_by(&mut self, max: usize) {
+        self.rewind_unchecked_by(max.min(self.current_idx))
     }
 }
 
@@ -116,86 +123,93 @@ impl<B: Bytes> Reader<B> {
     /// Read `token` if the remained bytes starts with it, otherwise return `Err`
     /// 
     /// `token :　&str | &[u8]`
-    #[inline] pub fn consume(&mut self, token: impl AsBytes) -> Result<(), Cow<'static, str>> {
+    #[inline] pub fn consume(&mut self, token: impl AsBytes) -> Option<()> {
         let token = token._as_bytes();
         self.remained().starts_with(token)
             .then(|| self.advance_unchecked_by(token.len()))
-            .ok_or_else(|| Cow::Owned(f!("Expected `{}` but not found", String::from_utf8_lossy(token))))
     }
     /// Read first token in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `Err` if none matched
     /// 
     /// `token :　&str | &[u8]`
-    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsBytes; N]) -> Result<usize, Cow<'static, str>> {
+    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsBytes; N]) -> Option<usize> {
         for i in 0..tokens.len() {
             let token = tokens[i]._as_bytes();
             if self.remained().starts_with(token) {
                 self.advance_unchecked_by(token.len());
-                return Ok(i)
+                return Some(i)
             }
         }
-        (|| Err(Cow::Owned(f!(
-            "Expected oneof {} but none matched",
-            tokens.map(|t| f!("`{}`", String::from_utf8_lossy(t._as_bytes()))).join(", "))))
-        )()
+        None
     }
 
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String`
-    #[inline] pub fn read_camel(&mut self) -> Result<String, Cow<'static, str>> {
+    #[inline] pub fn read_camel(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec();
-        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a camelCase word but it wasn't found"))}
-        // SAFETY:
-        // This `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z'`
-        Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
+        // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z'`
+        (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String`
-    #[inline] pub fn read_snake(&mut self) -> Result<String, Cow<'static, str>> {
+    #[inline] pub fn read_snake(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_')).to_vec();
-        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a snake_case word but it wasn't found"))}
-        // SAFETY:
-        // This `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
-        Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
+        // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
+        (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String`
-    #[inline] pub fn read_kebab(&mut self) -> Result<String, Cow<'static, str>> {
+    #[inline] pub fn read_kebab(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-')).to_vec();
-        if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a kebab-case word but it wasn't found"))}
-        // SAFETY:
-        // This `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'-'`
-        Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
+        // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
+        (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
 
-    /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
+    /// Read a double-quoted **UTF-8** string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
     /// 
-    /// This doesn't handle escape sequences
-    pub fn read_string(&mut self) -> Result<String, Cow<'static, str>> {
+    /// - Returns `None` if
+    ///   - `"` was not found
+    ///   - The quoted content is not UTF-8
+    /// 
+    /// - This doesn't handle escape sequences
+    pub fn read_string(&mut self) -> Option<String> {
         self.consume("\"")?;
         let content = self.read_while(|b| b != &b'"').to_vec();
         self.consume("\"")?;
 
-        String::from_utf8(content).map_err(|e| Cow::Owned(f!("{e}")))
+        String::from_utf8(content).ok()
     }
     /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
     /// 
     /// This doesn't handle escape sequences
-    pub unsafe fn read_string_unchecked(&mut self) -> Result<String, Cow<'static, str>> {
+    pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
         self.consume("\"")?;
         let content = self.read_while(|b| b != &b'"').to_vec();
         self.consume("\"")?;
 
-        Ok(String::from_utf8_unchecked(content))
+        Some(String::from_utf8_unchecked(content))
     }
-    /// Read an unsigned integer literal like `42`, `123` as `usize`
-    #[inline] pub fn read_uint(&mut self) -> Result<usize, Cow<'static, str>> {
+    /// Read an unsigned integer literal like `42`, `123` if found, and return it as `usize`
+    /// 
+    /// - Panics if the integer is larger then `usize::MAX`
+    #[inline] pub fn read_uint(&mut self) -> Option<usize> {
         let digits = self.read_while(|b| &b'0' <= b && b <= &b'9');
-        if digits.len() == 0 {return Err(Cow::Borrowed("Expected an integer but not found"))}
-
-        Ok(digits.into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as usize))
+        (digits.len() > 0).then(|| digits.into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as usize))
     }
-    /// Read an integer literal like `42`, `-1111` as `isize`
-    #[inline] pub fn read_int(&mut self) -> Result<isize, Cow<'static, str>> {
-        let negetive = self.consume("-").is_ok();
-        let absolute = self.read_uint()? as isize;
-        
-        Ok(if negetive { -absolute } else {absolute})
+    /// Read an integer literal like `42`, `-1111` if found, and return it as `isize`
+    /// 
+    /// - Panics if the integer is larger then `isize::MAX` or smaller then `isize::MIN`
+    pub fn read_int(&mut self) -> Option<isize> {
+        let negative = self.peek()? == &b'-';
+
+        if !negative {
+            self.read_uint().map(|u| u as isize)
+        } else {
+            let mut digits_len = 0;
+            while self.remained()[1..].get(digits_len).is_some_and(|b| &b'0' <= b && b <= &b'9') {
+                digits_len += 1
+            }
+            (digits_len > 0).then(|| {
+                self.advance_unchecked_by(1 + digits_len);
+                - self.content()[(self.current_idx - digits_len)..(self.current_idx)]
+                    .into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as isize)
+            })
+        }
     }
 }
