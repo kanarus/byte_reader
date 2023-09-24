@@ -57,7 +57,7 @@ fn main() {
 - `"location"`
 
 You can track the reader's parsing location ( **line** and **column** ) in the input bytes.<br/>
-When this feature is activated, `rewind_by` operation is NOT available.
+When this feature is activated, `rewind_by` operation is **NOT** available.
 
 ```rust
 /* enable "location" feature */
