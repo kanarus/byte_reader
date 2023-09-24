@@ -114,40 +114,53 @@ impl<B: Bytes> Reader<B> {
     }
 
     /// Read `token` if the remained bytes starts with it, otherwise return `Err`
-    #[inline] pub fn consume(&mut self, token: &str) -> Result<(), Cow<'static, str>> {
-        self.remained().starts_with(token.as_bytes())
-            .then(|| self.advance_unchecked_by(token.len()))
-            .ok_or_else(|| Cow::Owned(f!("Expected token `{token}` but not found")))
-    }
-    /// Read first token in `tokens` that the remained bytes starts with, and returns the index of the (matched) token.
     /// 
-    /// Returns `Err` if none matched.
-    pub fn consume_oneof<const N: usize>(&mut self, tokens: [&str; N]) -> Result<usize, Cow<'static, str>> {
+    /// `token :　&str | &[u8]`
+    #[inline] pub fn consume(&mut self, token: impl AsBytes) -> Result<(), Cow<'static, str>> {
+        let token = token._as_bytes();
+        self.remained().starts_with(token)
+            .then(|| self.advance_unchecked_by(token.len()))
+            .ok_or_else(|| Cow::Owned(f!("Expected `{}` but not found", String::from_utf8_lossy(token))))
+    }
+    /// Read first token in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `Err` if none matched
+    /// 
+    /// `token :　&str | &[u8]`
+    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsBytes; N]) -> Result<usize, Cow<'static, str>> {
         for i in 0..tokens.len() {
-            if self.remained().starts_with(tokens[i].as_bytes()) {
-                self.advance_by(tokens[i].len());
+            let token = tokens[i]._as_bytes();
+            if self.remained().starts_with(token) {
+                self.advance_unchecked_by(token.len());
                 return Ok(i)
             }
         }
-        (|| Err(Cow::Owned(f!("Expected oneof {} but none matched", tokens.map(|t| f!("`{t}`")).join(", ")))))()
+        (|| Err(Cow::Owned(f!(
+            "Expected oneof {} but none matched",
+            tokens.map(|t| f!("`{}`", String::from_utf8_lossy(t._as_bytes()))).join(", "))))
+        )()
     }
 
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String`
     #[inline] pub fn read_camel(&mut self) -> Result<String, Cow<'static, str>> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec();
         if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a camelCase word but it wasn't found"))}
+        // SAFETY:
+        // This `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z'`
         Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String`
     #[inline] pub fn read_snake(&mut self) -> Result<String, Cow<'static, str>> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_')).to_vec();
         if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a snake_case word but it wasn't found"))}
+        // SAFETY:
+        // This `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
         Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
     /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String`
     #[inline] pub fn read_kebab(&mut self) -> Result<String, Cow<'static, str>> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-')).to_vec();
         if ident_bytes.len() == 0 {return Err(Cow::Borrowed("Expected a kebab-case word but it wasn't found"))}
+        // SAFETY:
+        // This `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'-'`
         Ok(unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
 
