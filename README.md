@@ -20,7 +20,7 @@ use byte_reader::Reader;
 
 fn main() {
     // Get an input from a File, standard input, or another source
-    // Input can be `&str`, `String`, `&[u8]`, or `Vec<u8>`
+    // Input must implement `AsRef<[u8]>`
     let sample_input = "Hello,    byte_reader!";
 
     // Create mutable `r`
