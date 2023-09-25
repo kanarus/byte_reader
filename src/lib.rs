@@ -205,8 +205,8 @@ impl<B: Bytes> Reader<B> {
     /// 
     /// - Panics if the integer is larger then `usize::MAX`
     #[inline] pub fn read_uint(&mut self) -> Option<usize> {
-        let digits = self.read_while(|b| &b'0' <= b && b <= &b'9');
-        (digits.len() > 0).then(|| digits.into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as usize))
+        let digits = self.read_while(|b| b.is_ascii_digit());
+        (digits.len() > 0).then(|| digits.into_iter().fold(0, |uint, d| uint*10 + (*d-b'0') as usize))
     }
     /// Read an integer literal like `42`, `-1111` if found, and return it as `isize`
     /// 
@@ -217,12 +217,11 @@ impl<B: Bytes> Reader<B> {
         if !negative {
             self.read_uint().map(|u| u as isize)
         } else {
-            let mut digits_len = 0;
-            while self.remained()[1..].get(digits_len).is_some_and(|b| &b'0' <= b && b <= &b'9') {digits_len += 1}
-            (digits_len > 0).then(|| {
-                self.advance_unchecked_by(1 + digits_len);
-                - self.content()[(self.current_idx - digits_len)..(self.current_idx)]
-                      .into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as isize)
+            let (abs, n_digits) = self.remained()[1..].iter()
+                .map_while(|b| b.is_ascii_digit().then(|| *b - b'0'))
+                .fold((0, 0), |(abs, n), d| (abs*10+d as isize, n+1));
+            (n_digits > 0).then(|| {
+                self.advance_unchecked_by(1/*'-'*/ + n_digits); -abs
             })
         }
     }
