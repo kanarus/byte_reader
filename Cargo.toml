@@ -10,7 +10,7 @@ readme        = "README.md"
 license       = "MIT"
 description   = "A minimal byte-by-byte reader for parsing input"
 keywords      = ["minimal", "lightweight", "bytes", "reader", "parser"]
-categories    = ["encoding", "rust-patterns", "text-processing"]
+categories    = ["parsing", "encoding", "rust-patterns", "text-processing"]
 
 [features]
 location      = []
