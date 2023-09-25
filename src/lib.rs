@@ -12,7 +12,7 @@ pub struct Reader<B: Bytes> {
 }
     
 impl<B: Bytes> Reader<B> {
-    /// Generate new `Reader` from `Vec<u8>` or `&[u8]`
+    /// Generate new `Reader` from `&str | String | &[u8] | Vec<u8>`
     pub fn new(content: B) -> Self {
         Self {
             content,
@@ -57,7 +57,28 @@ impl<B: Bytes> Reader<B> {
 
         self.current_idx += n;
     }
-    #[cfg(not(feature="location"))] pub(crate) fn rewind_unchecked_by(&mut self, n: usize) {
+    pub(crate) fn unwind_unchecked_by(&mut self, n: usize) {
+        #[cfg(feature="location")] {
+            let mut line   = self.current_line.clone();
+            let mut column = self.current_column.clone();
+            let c = self.content();
+            for i in 1..=n {
+                if &c[self.current_idx - i] != &b'\n' {
+                    column -= 1
+                } else {
+                    line -= 1; column = 'c: {
+                        let here = self.current_idx - i;
+                        for j in 1..=here {
+                            if &c[here - j] == &b'\n' {break 'c j}
+                        }
+                        here + 1
+                    }
+                }
+            }
+            self.current_line   = line;
+            self.current_column = column;
+        }
+
         self.current_idx -= n;
     }
 
@@ -66,11 +87,11 @@ impl<B: Bytes> Reader<B> {
         self.advance_unchecked_by(max.min(self.remained().len()))
     }
 
-    /// Rewind by `max` bytes (or, if already-read bytes is shorter than `max`, rewind all)
+    /// Unwind the parsing point by `max` bytes (or, if already-read bytes is shorter than `max`, rewind all)
     /// 
-    /// available only when `"location"` feature is **dis**abled
-    #[cfg(not(feature="location"))] pub fn rewind_by(&mut self, max: usize) {
-        self.rewind_unchecked_by(max.min(self.current_idx))
+    /// When `"location"` feature is activated, this may be *less performant* for some extensive input
+    pub fn unwind_by(&mut self, max: usize) {
+        self.unwind_unchecked_by(max.min(self.current_idx))
     }
 }
 
@@ -122,18 +143,18 @@ impl<B: Bytes> Reader<B> {
 
     /// Read `token` if the remained bytes starts with it, otherwise return `Err`
     /// 
-    /// `token :　&str | &[u8]`
-    #[inline] pub fn consume(&mut self, token: impl AsBytes) -> Option<()> {
-        let token = token._as_bytes();
+    /// `token :　&str | String | &[u8] | Vec<u8>`
+    #[inline] pub fn consume(&mut self, token: impl Bytes) -> Option<()> {
+        let token = token.bytes();
         self.remained().starts_with(token)
             .then(|| self.advance_unchecked_by(token.len()))
     }
     /// Read first token in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `Err` if none matched
     /// 
-    /// `token :　&str | &[u8]`
-    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsBytes; N]) -> Option<usize> {
+    /// `token :　&str | String | &[u8] | Vec<u8>`
+    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl Bytes; N]) -> Option<usize> {
         for i in 0..tokens.len() {
-            let token = tokens[i]._as_bytes();
+            let token = tokens[i].bytes();
             if self.remained().starts_with(token) {
                 self.advance_unchecked_by(token.len());
                 return Some(i)
@@ -164,26 +185,42 @@ impl<B: Bytes> Reader<B> {
     /// Read a double-quoted **UTF-8** string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
     /// 
     /// - Returns `None` if
-    ///   - `"` was not found
+    ///   - Expected `"`s were not found
     ///   - The quoted content is not UTF-8
     /// 
     /// - This doesn't handle escape sequences
     pub fn read_string(&mut self) -> Option<String> {
-        self.consume("\"")?;
-        let content = self.read_while(|b| b != &b'"').to_vec();
-        self.consume("\"")?;
+        if self.peek()? != &b'"' {return None}
 
-        String::from_utf8(content).ok()
+        let mut string_len = 0;
+        for b in &self.remained()[1..] {
+            if b == &b'"' {break}
+            string_len += 1
+        }
+        let string = String::from_utf8(self.remained()[1..(1 + string_len)].to_vec()).ok()?;
+
+        if self.remained().get(0/*'"'*/ + string_len/*final byte of quoted one*/ + 1)? != &b'"' {return None}
+
+        self.advance_unchecked_by(1 + string_len + 1);
+        Some(string)
     }
     /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
     /// 
     /// This doesn't handle escape sequences
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
-        self.consume("\"")?;
-        let content = self.read_while(|b| b != &b'"').to_vec();
-        self.consume("\"")?;
+        if self.peek()? != &b'"' {return None}
 
-        Some(String::from_utf8_unchecked(content))
+        let mut string_len = 0;
+        for b in &self.remained()[1..] {
+            if b == &b'"' {break}
+            string_len += 1
+        }
+        let string = unsafe {String::from_utf8_unchecked(self.remained()[1..(1 + string_len)].to_vec())};
+
+        if self.remained().get(0/*'"'*/ + string_len/*final byte of quoted one*/ + 1)? != &b'"' {return None}
+
+        self.advance_unchecked_by(1 + string_len + 1);
+        Some(string)
     }
     /// Read an unsigned integer literal like `42`, `123` if found, and return it as `usize`
     /// 

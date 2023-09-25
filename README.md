@@ -19,11 +19,11 @@ Following situation:
 use byte_reader::Reader;
 
 fn main() {
-    // Get a `&[u8]` or `Vec<u8>` input from
-    // a File, standard input, or something
-    let sample_input = "Hello,    byte_reader!".as_bytes();
+    // Get an input from a File, standard input, or another source
+    // Input can be `&str`, `String`, `&[u8]`, or `Vec<u8>`
+    let sample_input = "Hello,    byte_reader!";
 
-    // Create a mutable `r`
+    // Create mutable `r`
     let mut r = Reader::new(sample_input);
 
     // Use some simple operations
@@ -41,7 +41,7 @@ fn main() {
 <br/>
 
 ## Operations
-- `advance_by`, `rewind_by`
+- `advance_by`, `unwind_by`
 - `next`, `next_if`
 - `peek`, `peek2`, `peek3`
 - `consume`, `consume_oneof`
@@ -56,17 +56,14 @@ fn main() {
 ## Features
 - `"location"`
 
-You can track the reader's parsing location ( **line** and **column** ) in the input bytes.<br/>
-When this feature is activated, `rewind_by` operation is **NOT** available.
+You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
 
 ```rust
 /* enable "location" feature */
 use byte_reader::Reader;
 
 fn main() {
-    let sample_input = "Hello,    byte_reader!".as_bytes();
-
-    let mut r = Reader::new(sample_input);
+    let mut r = Reader::new("Hello,    byte_reader!");
 
     r.consume("Hello").unwrap();
     r.consume(",").unwrap();
