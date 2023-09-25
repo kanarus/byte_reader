@@ -81,4 +81,4 @@ fn main() {
 <br/>
 
 ## License
-`byte_reader` is licensed under the MIT License ([LICENSE](https://github.com/kana-rus/byte_reader/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+`byte_reader` is licensed under the MIT License ([LICENSE](https://github.com/kana-rus/byte_reader/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
