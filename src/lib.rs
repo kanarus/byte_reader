@@ -7,8 +7,10 @@ mod traits; use traits::*;
 pub struct Reader<B: Bytes> {
     content:        B,
     current_idx:    usize,
-    #[cfg(feature="location")] current_line:   usize,
-    #[cfg(feature="location")] current_column: usize,
+    /// Line of current parsing point
+    #[cfg(feature="location")] pub line:   usize,
+    /// Column of current parsing point
+    #[cfg(feature="location")] pub column: usize,
 }
     
 impl<B: Bytes> Reader<B> {
@@ -17,18 +19,9 @@ impl<B: Bytes> Reader<B> {
         Self {
             content,
             current_idx: 0,
-            #[cfg(feature="location")] current_line:   1,
-            #[cfg(feature="location")] current_column: 1,
+            #[cfg(feature="location")] line:   1,
+            #[cfg(feature="location")] column: 1,
         }
-    }
-
-    /// Returns current line number of the cursor (starts from 1)
-    #[cfg(feature="location")] #[inline(always)] pub fn line(&self) -> usize {
-        self.current_line
-    }
-    /// Returns current column number of the cursor (starts from 1)
-    #[cfg(feature="location")] #[inline(always)] pub fn column(&self) -> usize {
-        self.current_column
     }
 
     #[inline(always)] pub(crate) fn content(&self) -> &[u8] {
@@ -42,8 +35,8 @@ impl<B: Bytes> Reader<B> {
 impl<B: Bytes> Reader<B> {
     #[cfg_attr(not(feature="location"), inline)] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
-            let mut line   = self.current_line.clone();
-            let mut column = self.current_column.clone();
+            let mut line   = self.line;
+            let mut column = self.column;
             for b in &self.remained()[..n] {
                 if &b'\n' != b {
                     column += 1
@@ -51,32 +44,30 @@ impl<B: Bytes> Reader<B> {
                     line += 1; column = 1
                 }
             }
-            self.current_line   = line;
-            self.current_column = column;
+            self.line   = line;
+            self.column = column;
         }
 
         self.current_idx += n;
     }
     pub(crate) fn unwind_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
-            let mut line   = self.current_line.clone();
-            let mut column = self.current_column.clone();
+            let mut line   = self.line;
+            let mut column = self.column;
             let c = self.content();
-            for i in 1..=n {
-                if &c[self.current_idx - i] != &b'\n' {
+            for i in 1..=n {let here = self.current_idx - i;
+                if &c[here] != &b'\n' {
                     column -= 1
                 } else {
                     line -= 1; column = 'c: {
-                        let here = self.current_idx - i;
                         for j in 1..=here {
                             if &c[here - j] == &b'\n' {break 'c j}
-                        }
-                        here + 1
+                        }; here + 1
                     }
                 }
             }
-            self.current_line   = line;
-            self.current_column = column;
+            self.line   = line;
+            self.column = column;
         }
 
         self.current_idx -= n;
@@ -86,43 +77,37 @@ impl<B: Bytes> Reader<B> {
     #[inline(always)] pub fn advance_by(&mut self, max: usize) {
         self.advance_unchecked_by(max.min(self.remained().len()))
     }
-
     /// Unwind the parsing point by `max` bytes (or, if already-read bytes is shorter than `max`, rewind all)
     /// 
     /// When `"location"` feature is activated, this may be *less performant* for some extensive input
     pub fn unwind_by(&mut self, max: usize) {
         self.unwind_unchecked_by(max.min(self.current_idx))
     }
-}
 
-impl<B: Bytes> Reader<B> {
-    /// `.skip_while(|b| b.is_ascii_whitespace())`
+    /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
         let mut len = 0;
-        while self.remained().get(len).is_some_and(|b| condition(b)) {
-            len += 1
-        }
+        while self.remained().get(len).is_some_and(|b| condition(b)) {len += 1}
         self.advance_unchecked_by(len);
     }
-    /// Skip while the byte is ascii-whitespace
+    /// `.skip_while(|b| b.is_ascii_whitespace())`
     #[inline] pub fn skip_whitespace(&mut self) {
         self.skip_while(|b| b.is_ascii_whitespace())
     }
-
-    /// Read next byte while the condition holds
+    /// Read next byte while the condition holds on it
     #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
         let start_idx = self.current_idx;
         self.skip_while(condition);
         &self.content()[start_idx..self.current_idx]
     }
-
+    
     /// Read next one byte, or return None if the remained bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.current_idx;
         self.advance_by(1);
         (self.current_idx > here).then(|| self.content()[here])
     }
-    /// Read next one byte if the condition holds for it
+    /// Read next one byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
         let value = self.peek()?.clone();
         condition(&value).then(|| {self.advance_unchecked_by(1); value})
@@ -193,10 +178,7 @@ impl<B: Bytes> Reader<B> {
         if self.peek()? != &b'"' {return None}
 
         let mut string_len = 0;
-        for b in &self.remained()[1..] {
-            if b == &b'"' {break}
-            string_len += 1
-        }
+        while self.remained()[1..].get(string_len).is_some_and(|b| b != &b'"') {string_len += 1}
         let string = String::from_utf8(self.remained()[1..(1 + string_len)].to_vec()).ok()?;
 
         if self.remained().get(0/*'"'*/ + string_len/*final byte of quoted one*/ + 1)? != &b'"' {return None}
@@ -211,10 +193,7 @@ impl<B: Bytes> Reader<B> {
         if self.peek()? != &b'"' {return None}
 
         let mut string_len = 0;
-        for b in &self.remained()[1..] {
-            if b == &b'"' {break}
-            string_len += 1
-        }
+        while self.remained()[1..].get(string_len).is_some_and(|b| b != &b'"') {string_len += 1}
         let string = unsafe {String::from_utf8_unchecked(self.remained()[1..(1 + string_len)].to_vec())};
 
         if self.remained().get(0/*'"'*/ + string_len/*final byte of quoted one*/ + 1)? != &b'"' {return None}
@@ -239,13 +218,11 @@ impl<B: Bytes> Reader<B> {
             self.read_uint().map(|u| u as isize)
         } else {
             let mut digits_len = 0;
-            while self.remained()[1..].get(digits_len).is_some_and(|b| &b'0' <= b && b <= &b'9') {
-                digits_len += 1
-            }
+            while self.remained()[1..].get(digits_len).is_some_and(|b| &b'0' <= b && b <= &b'9') {digits_len += 1}
             (digits_len > 0).then(|| {
                 self.advance_unchecked_by(1 + digits_len);
                 - self.content()[(self.current_idx - digits_len)..(self.current_idx)]
-                    .into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as isize)
+                      .into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as isize)
             })
         }
     }
