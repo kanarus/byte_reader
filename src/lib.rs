@@ -100,7 +100,7 @@ impl<B: Bytes> Reader<B> {
         self.skip_while(condition);
         &self.content()[start_idx..self.current_idx]
     }
-    
+
     /// Read next one byte, or return None if the remained bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.current_idx;
@@ -176,14 +176,13 @@ impl<B: Bytes> Reader<B> {
     /// - This doesn't handle escape sequences
     pub fn read_string(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
+        let string = String::from_utf8(
+            self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+        ).ok()?;
+        let eoq/* end of quotation */ = 0 + string.len() + 1;
+        if self.remained().get(eoq)? != &b'"' {return None}
 
-        let mut string_len = 0;
-        while self.remained()[1..].get(string_len).is_some_and(|b| b != &b'"') {string_len += 1}
-        let string = String::from_utf8(self.remained()[1..(1 + string_len)].to_vec()).ok()?;
-
-        if self.remained().get(0/*'"'*/ + string_len/*final byte of quoted one*/ + 1)? != &b'"' {return None}
-
-        self.advance_unchecked_by(1 + string_len + 1);
+        self.advance_unchecked_by(eoq + 1);
         Some(string)
     }
     /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
@@ -192,13 +191,14 @@ impl<B: Bytes> Reader<B> {
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
 
-        let mut string_len = 0;
-        while self.remained()[1..].get(string_len).is_some_and(|b| b != &b'"') {string_len += 1}
-        let string = unsafe {String::from_utf8_unchecked(self.remained()[1..(1 + string_len)].to_vec())};
+        let string = unsafe {String::from_utf8_unchecked(
+            self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+        )};
 
-        if self.remained().get(0/*'"'*/ + string_len/*final byte of quoted one*/ + 1)? != &b'"' {return None}
+        let eoq = 0 + string.len() + 1;
+        if self.remained().get(eoq)? != &b'"' {return None}
 
-        self.advance_unchecked_by(1 + string_len + 1);
+        self.advance_unchecked_by(eoq + 1);
         Some(string)
     }
     /// Read an unsigned integer literal like `42`, `123` if found, and return it as `usize`
