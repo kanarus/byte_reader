@@ -27,9 +27,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
     #[inline(always)] pub(crate) fn remained(&self) -> &[u8] {
         &self.content()[self.current_idx..]
     }
-}
-
-impl<B: AsRef<[u8]>> Reader<B> {
+    
     #[inline] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
@@ -44,7 +42,6 @@ impl<B: AsRef<[u8]>> Reader<B> {
             self.line   = line;
             self.column = column;
         }
-
         self.current_idx += n;
     }
     #[cfg_attr(not(feature="location"), inline)] pub(crate) fn unwind_unchecked_by(&mut self, n: usize) {
@@ -66,10 +63,8 @@ impl<B: AsRef<[u8]>> Reader<B> {
             self.line   = line;
             self.column = column;
         }
-
         self.current_idx -= n;
     }
-
     /// Advance by `max` bytes (or, if remained bytes is shorter than `max`, read all remained bytes)
     #[inline(always)] pub fn advance_by(&mut self, max: usize) {
         self.advance_unchecked_by(max.min(self.remained().len()))
@@ -93,9 +88,9 @@ impl<B: AsRef<[u8]>> Reader<B> {
     }
     /// Read next byte while the condition holds on it
     #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
-        let start_idx = self.current_idx;
+        let start = self.current_idx;
         self.skip_while(condition);
-        &self.content()[start_idx..self.current_idx]
+        &self.content()[start..self.current_idx]
     }
 
     /// Read next one byte, or return None if the remained bytes is empty
@@ -111,23 +106,16 @@ impl<B: AsRef<[u8]>> Reader<B> {
     }
 
     /// Peek next byte (without consuming)
-    #[inline(always)] pub fn peek(&self) -> Option<&u8> {
-        self.remained().get(0)
-    }
+    #[inline(always)] pub fn peek(&self) -> Option<&u8> {self.remained().get(0)}
     /// Peek next byte of next byte (without consuming)
-    #[inline] pub fn peek2(&self) -> Option<&u8> {
-        self.remained().get(1)
-    }
+    #[inline] pub fn peek2(&self) -> Option<&u8> {self.remained().get(1)}
     /// Peek next byte of next byte of next byte (without consuming)
-    pub fn peek3(&self) -> Option<&u8> {
-        self.remained().get(2)
-    }
+    pub fn peek3(&self) -> Option<&u8> {self.remained().get(2)}
 
     /// Read `token` if the remained bytes starts with it
     #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
         let token = token.as_ref();
-        self.remained().starts_with(token)
-            .then(|| self.advance_unchecked_by(token.len()))
+        self.remained().starts_with(token).then(|| self.advance_unchecked_by(token.len()))
     }
     /// Read first `token` in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `None` if none matched
     pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
@@ -162,11 +150,8 @@ impl<B: AsRef<[u8]>> Reader<B> {
 
     /// Read a double-quoted **UTF-8** string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
     /// 
-    /// - Returns `None` if
-    ///   - Expected `"`s were not found
-    ///   - The quoted content is not UTF-8
-    /// 
-    /// - This doesn't handle escape sequences
+    /// - Returns `None` if expected `"`s were not found or the quoted content is not UTF-8
+    /// -This doesn't handle escape sequences
     #[inline] pub fn read_string(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
         let string = String::from_utf8(
@@ -180,14 +165,12 @@ impl<B: AsRef<[u8]>> Reader<B> {
     }
     /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
     /// 
-    /// This doesn't handle escape sequences
+    /// - This doesn't handle escape sequences
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
-
         let string = unsafe {String::from_utf8_unchecked(
             self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
         )};
-
         let eoq = 0 + string.len() + 1;
         if self.remained().get(eoq)? != &b'"' {return None}
 
@@ -205,9 +188,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
     /// 
     /// - Panics if the integer is larger then `isize::MAX` or smaller then `isize::MIN`
     #[inline] pub fn read_int(&mut self) -> Option<isize> {
-        let negative = self.peek()? == &b'-';
-
-        if !negative {
+        if self.peek()? != &b'-' {
             self.read_uint().map(|u| u as isize)
         } else {
             let (abs, n_digits) = self.remained()[1..].iter()
