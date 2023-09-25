@@ -27,7 +27,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
     #[inline(always)] pub(crate) fn remained(&self) -> &[u8] {
         &self.content()[self.current_idx..]
     }
-    
+
     #[inline] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
@@ -106,11 +106,17 @@ impl<B: AsRef<[u8]>> Reader<B> {
     }
 
     /// Peek next byte (without consuming)
-    #[inline(always)] pub fn peek(&self) -> Option<&u8> {self.remained().get(0)}
+    #[inline(always)] pub fn peek(&self) -> Option<&u8> {
+        self.remained().get(0)
+    }
     /// Peek next byte of next byte (without consuming)
-    #[inline] pub fn peek2(&self) -> Option<&u8> {self.remained().get(1)}
+    #[inline] pub fn peek2(&self) -> Option<&u8> {
+        self.remained().get(1)
+    }
     /// Peek next byte of next byte of next byte (without consuming)
-    pub fn peek3(&self) -> Option<&u8> {self.remained().get(2)}
+    pub fn peek3(&self) -> Option<&u8> {
+        self.remained().get(2)
+    }
 
     /// Read `token` if the remained bytes starts with it
     #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
