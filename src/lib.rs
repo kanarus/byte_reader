@@ -1,9 +1,8 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
-mod traits; use traits::*;
 #[cfg(test)] mod _test;
 
-pub struct Reader<B: Bytes> {
+pub struct Reader<B: AsRef<[u8]>> {
     content:     B,
     current_idx: usize,
     /// Line of current parsing point
@@ -12,8 +11,7 @@ pub struct Reader<B: Bytes> {
     #[cfg(feature="location")] pub column: usize,
 }
     
-impl<B: Bytes> Reader<B> {
-    /// Generate new `Reader` from `&str | String | &[u8] | Vec<u8>`
+impl<B: AsRef<[u8]>> Reader<B> {
     pub fn new(content: B) -> Self {
         Self {
             content,
@@ -24,14 +22,14 @@ impl<B: Bytes> Reader<B> {
     }
 
     #[inline(always)] pub(crate) fn content(&self) -> &[u8] {
-        self.content.bytes()
+        self.content.as_ref()
     }
     #[inline(always)] pub(crate) fn remained(&self) -> &[u8] {
         &self.content()[self.current_idx..]
     }
 }
 
-impl<B: Bytes> Reader<B> {
+impl<B: AsRef<[u8]>> Reader<B> {
     #[inline] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
@@ -125,20 +123,16 @@ impl<B: Bytes> Reader<B> {
         self.remained().get(2)
     }
 
-    /// Read `token` if the remained bytes starts with it, otherwise return `Err`
-    /// 
-    /// `token :　&str | String | &[u8] | Vec<u8>`
-    #[inline] pub fn consume(&mut self, token: impl Bytes) -> Option<()> {
-        let token = token.bytes();
+    /// Read `token` if the remained bytes starts with it
+    #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
+        let token = token.as_ref();
         self.remained().starts_with(token)
             .then(|| self.advance_unchecked_by(token.len()))
     }
-    /// Read first token in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `Err` if none matched
-    /// 
-    /// `token :　&str | String | &[u8] | Vec<u8>`
-    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl Bytes; N]) -> Option<usize> {
+    /// Read first `token` in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `None` if none matched
+    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
         for i in 0..tokens.len() {
-            let token = tokens[i].bytes();
+            let token = tokens[i].as_ref();
             if self.remained().starts_with(token) {
                 self.advance_unchecked_by(token.len());
                 return Some(i)
@@ -147,19 +141,19 @@ impl<B: Bytes> Reader<B> {
         None
     }
 
-    /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String`
+    /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String` if found
     #[inline] pub fn read_camel(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec();
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z'`
         (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
-    /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String`
+    /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String` if found
     #[inline] pub fn read_snake(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_')).to_vec();
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
         (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
-    /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String`
+    /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String` if found
     #[inline] pub fn read_kebab(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-')).to_vec();
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
@@ -200,14 +194,14 @@ impl<B: Bytes> Reader<B> {
         self.advance_unchecked_by(eoq + 1);
         Some(string)
     }
-    /// Read an unsigned integer literal like `42`, `123` if found, and return it as `usize`
+    /// Read an unsigned integer literal like `42`, `123` as `usize` if found
     /// 
     /// - Panics if the integer is larger then `usize::MAX`
     #[inline] pub fn read_uint(&mut self) -> Option<usize> {
         let digits = self.read_while(|b| b.is_ascii_digit());
         (digits.len() > 0).then(|| digits.into_iter().fold(0, |uint, d| uint*10 + (*d-b'0') as usize))
     }
-    /// Read an integer literal like `42`, `-1111` if found, and return it as `isize`
+    /// Read an integer literal like `42`, `-1111` as `isize` if found
     /// 
     /// - Panics if the integer is larger then `isize::MAX` or smaller then `isize::MIN`
     #[inline] pub fn read_int(&mut self) -> Option<isize> {
