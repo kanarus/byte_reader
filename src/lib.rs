@@ -10,9 +10,9 @@ pub struct Reader<B: AsRef<[u8]>> {
     /// Column of current parsing point
     #[cfg(feature="location")] pub column: usize,
 }
-    
-impl<B: AsRef<[u8]>> Reader<B> {
-    pub fn new(content: B) -> Self {
+
+impl<B: AsRef<[u8]>> From<B> for Reader<B> {
+    fn from(content: B) -> Self {
         Self {
             content,
             current_idx: 0,
@@ -20,15 +20,17 @@ impl<B: AsRef<[u8]>> Reader<B> {
             #[cfg(feature="location")] column: 1,
         }
     }
+}
 
-    #[inline(always)] pub(crate) fn content(&self) -> &[u8] {
+impl<B: AsRef<[u8]>> Reader<B> {
+    #[inline(always)] fn content(&self) -> &[u8] {
         self.content.as_ref()
     }
-    #[inline(always)] pub(crate) fn remained(&self) -> &[u8] {
+    #[inline(always)] fn remained(&self) -> &[u8] {
         &self.content()[self.current_idx..]
     }
 
-    #[inline] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
+    #[inline] fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
@@ -44,7 +46,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
         }
         self.current_idx += n;
     }
-    #[cfg_attr(not(feature="location"), inline)] pub(crate) fn unwind_unchecked_by(&mut self, n: usize) {
+    #[cfg_attr(not(feature="location"), inline)] fn unwind_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
@@ -78,9 +80,8 @@ impl<B: AsRef<[u8]>> Reader<B> {
 
     /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
-        let mut len = 0;
-        while self.remained().get(len).is_some_and(|b| condition(b)) {len += 1}
-        self.advance_unchecked_by(len);
+        self.advance_unchecked_by(
+            self.remained().iter().take_while(|b| condition(b)).count())
     }
     /// `.skip_while(|b| b.is_ascii_whitespace())`
     #[inline] pub fn skip_whitespace(&mut self) {
@@ -97,7 +98,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.current_idx;
         self.advance_by(1);
-        (self.current_idx > here).then(|| self.content()[here])
+        (self.current_idx != here).then(|| self.content()[here])
     }
     /// Read next one byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
@@ -131,8 +132,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
                 self.advance_unchecked_by(token.len());
                 return Some(i)
             }
-        }
-        None
+        }; None
     }
 
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String` if found
@@ -201,8 +201,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
                 .map_while(|b| b.is_ascii_digit().then(|| *b - b'0'))
                 .fold((0, 0), |(abs, n), d| (abs*10+d as isize, n+1));
             (n_digits > 0).then(|| {
-                self.advance_unchecked_by(1/*'-'*/ + n_digits); -abs
-            })
+                self.advance_unchecked_by(1/*'-'*/ + n_digits); -abs})
         }
     }
 }

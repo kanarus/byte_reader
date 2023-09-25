@@ -19,12 +19,12 @@ Following situation:
 use byte_reader::Reader;
 
 fn main() {
-    // Get an input from a File, standard input, or another source
+    // Get a input from a File, standard input, or others
     // Input must implement `AsRef<[u8]>`
     let sample_input = "Hello,    byte_reader!";
 
-    // Create mutable `r`
-    let mut r = Reader::new(sample_input);
+    // Create mutable `r` from input
+    let mut r = Reader::from(sample_input);
 
     // Use some simple operations
     // to parse the input
