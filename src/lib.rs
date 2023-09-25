@@ -156,8 +156,9 @@ impl<B: AsRef<[u8]>> Reader<B> {
 
     /// Read a double-quoted **UTF-8** string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
     /// 
-    /// - Returns `None` if expected `"`s were not found or the quoted content is not UTF-8
-    /// -This doesn't handle escape sequences
+    /// - Returns `None` if expected `"`s were not found
+    /// - Returns `None` if the quoted bytes is not UTF-8
+    /// - Doesn't handle escape sequences
     #[inline] pub fn read_string(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
         let string = String::from_utf8(
@@ -171,7 +172,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
     }
     /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
     /// 
-    /// - This doesn't handle escape sequences
+    /// - Doesn't handle escape sequences
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
         let string = unsafe {String::from_utf8_unchecked(
