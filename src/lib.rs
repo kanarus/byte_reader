@@ -3,32 +3,24 @@
 mod traits; use traits::*;
 #[cfg(test)] mod _test;
 
-
 pub struct Reader<B: Bytes> {
-    content:        B,
-    current_idx:    usize,
-    #[cfg(feature="location")] current_line:   usize,
-    #[cfg(feature="location")] current_column: usize,
+    content:     B,
+    current_idx: usize,
+    /// Line of current parsing point
+    #[cfg(feature="location")] pub line:   usize,
+    /// Column of current parsing point
+    #[cfg(feature="location")] pub column: usize,
 }
     
 impl<B: Bytes> Reader<B> {
-    /// Generate new `Reader` from `Vec<u8>` or `&[u8]`
+    /// Generate new `Reader` from `&str | String | &[u8] | Vec<u8>`
     pub fn new(content: B) -> Self {
         Self {
             content,
             current_idx: 0,
-            #[cfg(feature="location")] current_line:   1,
-            #[cfg(feature="location")] current_column: 1,
+            #[cfg(feature="location")] line:   1,
+            #[cfg(feature="location")] column: 1,
         }
-    }
-
-    /// Returns current line number of the cursor (starts from 1)
-    #[cfg(feature="location")] #[inline(always)] pub fn line(&self) -> usize {
-        self.current_line
-    }
-    /// Returns current column number of the cursor (starts from 1)
-    #[cfg(feature="location")] #[inline(always)] pub fn column(&self) -> usize {
-        self.current_column
     }
 
     #[inline(always)] pub(crate) fn content(&self) -> &[u8] {
@@ -40,10 +32,10 @@ impl<B: Bytes> Reader<B> {
 }
 
 impl<B: Bytes> Reader<B> {
-    #[cfg_attr(not(feature="location"), inline)] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
+    #[inline] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
-            let mut line   = self.current_line.clone();
-            let mut column = self.current_column.clone();
+            let mut line   = self.line;
+            let mut column = self.column;
             for b in &self.remained()[..n] {
                 if &b'\n' != b {
                     column += 1
@@ -51,13 +43,32 @@ impl<B: Bytes> Reader<B> {
                     line += 1; column = 1
                 }
             }
-            self.current_line   = line;
-            self.current_column = column;
+            self.line   = line;
+            self.column = column;
         }
 
         self.current_idx += n;
     }
-    #[cfg(not(feature="location"))] pub(crate) fn rewind_unchecked_by(&mut self, n: usize) {
+    #[cfg_attr(not(feature="location"), inline)] pub(crate) fn unwind_unchecked_by(&mut self, n: usize) {
+        #[cfg(feature="location")] {
+            let mut line   = self.line;
+            let mut column = self.column;
+            let c = self.content();
+            for i in 1..=n {let here = self.current_idx - i;
+                if &c[here] != &b'\n' {
+                    column -= 1
+                } else {
+                    line -= 1; column = 'c: {
+                        for j in 1..=here {
+                            if &c[here - j] == &b'\n' {break 'c j}
+                        }; here + 1
+                    }
+                }
+            }
+            self.line   = line;
+            self.column = column;
+        }
+
         self.current_idx -= n;
     }
 
@@ -65,30 +76,24 @@ impl<B: Bytes> Reader<B> {
     #[inline(always)] pub fn advance_by(&mut self, max: usize) {
         self.advance_unchecked_by(max.min(self.remained().len()))
     }
-
-    /// Rewind by `max` bytes (or, if already-read bytes is shorter than `max`, rewind all)
+    /// Unwind the parsing point by `max` bytes (or, if already-read bytes is shorter than `max`, rewind all)
     /// 
-    /// available only when `"location"` feature is **dis**abled
-    #[cfg(not(feature="location"))] pub fn rewind_by(&mut self, max: usize) {
-        self.rewind_unchecked_by(max.min(self.current_idx))
+    /// When `"location"` feature is activated, this may be *less performant* for some extensive input
+    pub fn unwind_by(&mut self, max: usize) {
+        self.unwind_unchecked_by(max.min(self.current_idx))
     }
-}
 
-impl<B: Bytes> Reader<B> {
-    /// `.skip_while(|b| b.is_ascii_whitespace())`
+    /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
         let mut len = 0;
-        while self.remained().get(len).is_some_and(|b| condition(b)) {
-            len += 1
-        }
+        while self.remained().get(len).is_some_and(|b| condition(b)) {len += 1}
         self.advance_unchecked_by(len);
     }
-    /// Skip while the byte is ascii-whitespace
+    /// `.skip_while(|b| b.is_ascii_whitespace())`
     #[inline] pub fn skip_whitespace(&mut self) {
         self.skip_while(|b| b.is_ascii_whitespace())
     }
-
-    /// Read next byte while the condition holds
+    /// Read next byte while the condition holds on it
     #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
         let start_idx = self.current_idx;
         self.skip_while(condition);
@@ -101,7 +106,7 @@ impl<B: Bytes> Reader<B> {
         self.advance_by(1);
         (self.current_idx > here).then(|| self.content()[here])
     }
-    /// Read next one byte if the condition holds for it
+    /// Read next one byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
         let value = self.peek()?.clone();
         condition(&value).then(|| {self.advance_unchecked_by(1); value})
@@ -122,18 +127,18 @@ impl<B: Bytes> Reader<B> {
 
     /// Read `token` if the remained bytes starts with it, otherwise return `Err`
     /// 
-    /// `token :　&str | &[u8]`
-    #[inline] pub fn consume(&mut self, token: impl AsBytes) -> Option<()> {
-        let token = token._as_bytes();
+    /// `token :　&str | String | &[u8] | Vec<u8>`
+    #[inline] pub fn consume(&mut self, token: impl Bytes) -> Option<()> {
+        let token = token.bytes();
         self.remained().starts_with(token)
             .then(|| self.advance_unchecked_by(token.len()))
     }
     /// Read first token in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `Err` if none matched
     /// 
-    /// `token :　&str | &[u8]`
-    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsBytes; N]) -> Option<usize> {
+    /// `token :　&str | String | &[u8] | Vec<u8>`
+    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl Bytes; N]) -> Option<usize> {
         for i in 0..tokens.len() {
-            let token = tokens[i]._as_bytes();
+            let token = tokens[i].bytes();
             if self.remained().starts_with(token) {
                 self.advance_unchecked_by(token.len());
                 return Some(i)
@@ -164,51 +169,58 @@ impl<B: Bytes> Reader<B> {
     /// Read a double-quoted **UTF-8** string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
     /// 
     /// - Returns `None` if
-    ///   - `"` was not found
+    ///   - Expected `"`s were not found
     ///   - The quoted content is not UTF-8
     /// 
     /// - This doesn't handle escape sequences
-    pub fn read_string(&mut self) -> Option<String> {
-        self.consume("\"")?;
-        let content = self.read_while(|b| b != &b'"').to_vec();
-        self.consume("\"")?;
+    #[inline] pub fn read_string(&mut self) -> Option<String> {
+        if self.peek()? != &b'"' {return None}
+        let string = String::from_utf8(
+            self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+        ).ok()?;
+        let eoq/* end of quotation */ = 0 + string.len() + 1;
+        if self.remained().get(eoq)? != &b'"' {return None}
 
-        String::from_utf8(content).ok()
+        self.advance_unchecked_by(eoq + 1);
+        Some(string)
     }
     /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
     /// 
     /// This doesn't handle escape sequences
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
-        self.consume("\"")?;
-        let content = self.read_while(|b| b != &b'"').to_vec();
-        self.consume("\"")?;
+        if self.peek()? != &b'"' {return None}
 
-        Some(String::from_utf8_unchecked(content))
+        let string = unsafe {String::from_utf8_unchecked(
+            self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+        )};
+
+        let eoq = 0 + string.len() + 1;
+        if self.remained().get(eoq)? != &b'"' {return None}
+
+        self.advance_unchecked_by(eoq + 1);
+        Some(string)
     }
     /// Read an unsigned integer literal like `42`, `123` if found, and return it as `usize`
     /// 
     /// - Panics if the integer is larger then `usize::MAX`
     #[inline] pub fn read_uint(&mut self) -> Option<usize> {
-        let digits = self.read_while(|b| &b'0' <= b && b <= &b'9');
-        (digits.len() > 0).then(|| digits.into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as usize))
+        let digits = self.read_while(|b| b.is_ascii_digit());
+        (digits.len() > 0).then(|| digits.into_iter().fold(0, |uint, d| uint*10 + (*d-b'0') as usize))
     }
     /// Read an integer literal like `42`, `-1111` if found, and return it as `isize`
     /// 
     /// - Panics if the integer is larger then `isize::MAX` or smaller then `isize::MIN`
-    pub fn read_int(&mut self) -> Option<isize> {
+    #[inline] pub fn read_int(&mut self) -> Option<isize> {
         let negative = self.peek()? == &b'-';
 
         if !negative {
             self.read_uint().map(|u| u as isize)
         } else {
-            let mut digits_len = 0;
-            while self.remained()[1..].get(digits_len).is_some_and(|b| &b'0' <= b && b <= &b'9') {
-                digits_len += 1
-            }
-            (digits_len > 0).then(|| {
-                self.advance_unchecked_by(1 + digits_len);
-                - self.content()[(self.current_idx - digits_len)..(self.current_idx)]
-                    .into_iter().fold(0, |int, d| int * 10 + (*d - b'0') as isize)
+            let (abs, n_digits) = self.remained()[1..].iter()
+                .map_while(|b| b.is_ascii_digit().then(|| *b - b'0'))
+                .fold((0, 0), |(abs, n), d| (abs*10+d as isize, n+1));
+            (n_digits > 0).then(|| {
+                self.advance_unchecked_by(1/*'-'*/ + n_digits); -abs
             })
         }
     }
