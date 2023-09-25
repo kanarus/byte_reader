@@ -150,7 +150,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
     /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String` if found
     #[inline] pub fn read_kebab(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-')).to_vec();
-        // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
+        // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'-'`
         (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
 
