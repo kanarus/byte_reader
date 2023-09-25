@@ -3,10 +3,9 @@
 mod traits; use traits::*;
 #[cfg(test)] mod _test;
 
-
 pub struct Reader<B: Bytes> {
-    content:        B,
-    current_idx:    usize,
+    content:     B,
+    current_idx: usize,
     /// Line of current parsing point
     #[cfg(feature="location")] pub line:   usize,
     /// Column of current parsing point
@@ -33,7 +32,7 @@ impl<B: Bytes> Reader<B> {
 }
 
 impl<B: Bytes> Reader<B> {
-    #[cfg_attr(not(feature="location"), inline)] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
+    #[inline] pub(crate) fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
@@ -50,7 +49,7 @@ impl<B: Bytes> Reader<B> {
 
         self.current_idx += n;
     }
-    pub(crate) fn unwind_unchecked_by(&mut self, n: usize) {
+    #[cfg_attr(not(feature="location"), inline)] pub(crate) fn unwind_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
@@ -174,7 +173,7 @@ impl<B: Bytes> Reader<B> {
     ///   - The quoted content is not UTF-8
     /// 
     /// - This doesn't handle escape sequences
-    pub fn read_string(&mut self) -> Option<String> {
+    #[inline] pub fn read_string(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
         let string = String::from_utf8(
             self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
@@ -211,7 +210,7 @@ impl<B: Bytes> Reader<B> {
     /// Read an integer literal like `42`, `-1111` if found, and return it as `isize`
     /// 
     /// - Panics if the integer is larger then `isize::MAX` or smaller then `isize::MIN`
-    pub fn read_int(&mut self) -> Option<isize> {
+    #[inline] pub fn read_int(&mut self) -> Option<isize> {
         let negative = self.peek()? == &b'-';
 
         if !negative {
