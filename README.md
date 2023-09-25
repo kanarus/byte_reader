@@ -77,3 +77,8 @@ fn main() {
     println!("In the input, the name starts at column {name_column} of line {name_line}");
 }
 ```
+
+<br/>
+
+## License
+`byte_reader` is licensed under the MIT LICENSE ( [LICENSE](https://github.com/kana-rus/byte_reader/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT) )
