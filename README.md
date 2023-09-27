@@ -23,8 +23,8 @@ fn main() {
     // Input must implement `AsRef<[u8]>`
     let sample_input = "Hello,    byte_reader!";
 
-    // Create mutable `r` from input
-    let mut r = Reader::from(sample_input);
+    // Create mutable `r`
+    let mut r = Reader::new(sample_input);
 
     // Use some simple operations
     // to parse the input
@@ -56,7 +56,7 @@ fn main() {
 ## Features
 - `"location"`
 
-You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
+You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
 
 ```rust
 /* enable "location" feature */
@@ -70,11 +70,12 @@ fn main() {
     r.skip_whitespace();
     let name_line   = r.line;   // 1
     let name_column = r.column; // 11
+    let name_index  = r.index;  // 11
     let name = r.read_snake().unwrap(); // byte_reader
     r.consume("!").unwrap();
 
     println!("Greeted to `{name}`.");
-    println!("In the input, the name starts at column {name_column} of line {name_line}");
+    println!("In the input, the name starts at column {name_column} of line {name_line} (index: {index})");
 }
 ```
 

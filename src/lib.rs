@@ -3,31 +3,33 @@
 #[cfg(test)] mod _test;
 
 pub struct Reader<B: AsRef<[u8]>> {
-    content:     B,
-    current_idx: usize,
+    content: B,
+
+    #[cfg(not(feature="location"))] index: usize,
+    /// Index of current parsing point
+    #[cfg(feature="location")]  pub index: usize,
+
     /// Line of current parsing point
     #[cfg(feature="location")] pub line:   usize,
     /// Column of current parsing point
     #[cfg(feature="location")] pub column: usize,
 }
 
-impl<B: AsRef<[u8]>> From<B> for Reader<B> {
-    fn from(content: B) -> Self {
+impl<B: AsRef<[u8]>> Reader<B> {
+    pub fn new(content: B) -> Self {
         Self {
             content,
-            current_idx: 0,
+            index: 0,
             #[cfg(feature="location")] line:   1,
             #[cfg(feature="location")] column: 1,
         }
     }
-}
 
-impl<B: AsRef<[u8]>> Reader<B> {
     #[inline(always)] fn content(&self) -> &[u8] {
         self.content.as_ref()
     }
     #[inline(always)] fn remained(&self) -> &[u8] {
-        &self.content()[self.current_idx..]
+        &self.content()[self.index..]
     }
 
     #[inline] fn advance_unchecked_by(&mut self, n: usize) {
@@ -44,14 +46,14 @@ impl<B: AsRef<[u8]>> Reader<B> {
             self.line   = line;
             self.column = column;
         }
-        self.current_idx += n;
+        self.index += n;
     }
     #[cfg_attr(not(feature="location"), inline)] fn unwind_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
             let c = self.content();
-            for i in 1..=n {let here = self.current_idx - i;
+            for i in 1..=n {let here = self.index - i;
                 if &c[here] != &b'\n' {
                     column -= 1
                 } else {
@@ -65,7 +67,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
             self.line   = line;
             self.column = column;
         }
-        self.current_idx -= n;
+        self.index -= n;
     }
     /// Advance by `max` bytes (or, if remained bytes is shorter than `max`, read all remained bytes)
     #[inline(always)] pub fn advance_by(&mut self, max: usize) {
@@ -75,7 +77,7 @@ impl<B: AsRef<[u8]>> Reader<B> {
     /// 
     /// When `"location"` feature is activated, this may be *less performant* for some extensive input
     pub fn unwind_by(&mut self, max: usize) {
-        self.unwind_unchecked_by(max.min(self.current_idx))
+        self.unwind_unchecked_by(max.min(self.index))
     }
 
     /// Skip next byte while `condition` holds on it
@@ -89,16 +91,16 @@ impl<B: AsRef<[u8]>> Reader<B> {
     }
     /// Read next byte while the condition holds on it
     #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
-        let start = self.current_idx;
+        let start = self.index;
         self.skip_while(condition);
-        &self.content()[start..self.current_idx]
+        &self.content()[start..self.index]
     }
 
     /// Read next one byte, or return None if the remained bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
-        let here = self.current_idx;
+        let here = self.index;
         self.advance_by(1);
-        (self.current_idx != here).then(|| self.content()[here])
+        (self.index != here).then(|| self.content()[here])
     }
     /// Read next one byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {

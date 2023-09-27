@@ -6,7 +6,7 @@ fn main() {
     let sample_input = "Hello,    byte_reader!";
 
     // Create mutable `r`
-    let mut r = Reader::from(sample_input);
+    let mut r = Reader::new(sample_input);
 
     // Use some simple operations
     // to parse the input
