@@ -2,6 +2,41 @@
 
 #[cfg(test)] mod _test;
 
+/// A **minimal** byte-by-byte reader for parsing input
+/// 
+/// <br/>
+/// 
+/// <h2><a href="https://github.com/kana-rus/byte_reader/blob/main/examples/usage.rs">Usage</a></h2>
+/// 
+/// ```
+/// use byte_reader::Reader;
+/// 
+/// fn main() {
+///     // Get a input from a File, standard input, or others
+///     // Input must implement `AsRef<[u8]>`
+///     let sample_input = "Hello,    byte_reader!";
+/// 
+///     // Create mutable `r`
+///     let mut r = Reader::new(sample_input);
+/// 
+///     // Use some simple operations
+///     // to parse the input
+///     r.consume("Hello").unwrap();
+///     r.consume(",").unwrap();
+///     r.skip_whitespace();
+///     let name = r.read_snake().unwrap(); // byte_reader
+///     r.consume("!").unwrap();
+/// 
+///     println!("Greeted to `{name}`.");
+/// }
+/// ```
+/// 
+/// <br/>
+/// 
+/// ## Features
+/// - `"location"`
+/// 
+/// You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
 pub struct Reader<B: AsRef<[u8]>> {
     content: B,
 
