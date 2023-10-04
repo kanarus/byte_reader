@@ -37,8 +37,8 @@
 /// - `"location"`
 /// 
 /// You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
-pub struct Reader<B: AsRef<[u8]>> {
-    content: B,
+pub struct Reader {
+    content: Content,
 
     #[cfg(not(feature="location"))] index: usize,
     /// Index of current parsing point
@@ -49,12 +49,23 @@ pub struct Reader<B: AsRef<[u8]>> {
     /// Column of current parsing point
     #[cfg(feature="location")] pub column: usize,
 }
-
-impl<B: AsRef<[u8]>> Reader<B> {
-    pub fn new(content: B) -> Self {
+struct Content {
+    head: *const u8,
+    size: usize,
+} impl Content {
+    #[inline] fn from_slice(s: &[u8]) -> Self {
         Self {
-            content,
-            index: 0,
+            head: s.as_ptr(),
+            size: s.len(),
+        }
+    }
+}
+
+impl Reader {
+    pub fn new(content: impl AsRef<[u8]>) -> Self {
+        Self {
+            content: Content::from_slice(content.as_ref()),
+            index:   0,
             #[cfg(feature="location")] line:   1,
             #[cfg(feature="location")] column: 1,
         }
