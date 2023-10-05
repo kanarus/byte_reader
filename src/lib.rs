@@ -1,5 +1,7 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
+use core::slice;
+
 #[cfg(test)] mod _test;
 
 /// A **minimal** byte-by-byte reader for parsing input
@@ -38,7 +40,8 @@
 /// 
 /// You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
 pub struct Reader {
-    content: Content,
+    curr: *const u8,
+    size: usize,
 
     #[cfg(not(feature="location"))] index: usize,
     /// Index of current parsing point
@@ -49,40 +52,41 @@ pub struct Reader {
     /// Column of current parsing point
     #[cfg(feature="location")] pub column: usize,
 }
-struct Content {
-    head: *const u8,
-    size: usize,
-} impl Content {
-    #[inline] fn from_slice(s: &[u8]) -> Self {
-        Self {
-            head: s.as_ptr(),
-            size: s.len(),
-        }
-    }
-}
 
 impl Reader {
     pub fn new(content: impl AsRef<[u8]>) -> Self {
+        let slice = content.as_ref();
         Self {
-            content: Content::from_slice(content.as_ref()),
-            index:   0,
+            curr:  slice.as_ptr(),
+            size:  slice.len(),
+            index: 0,
             #[cfg(feature="location")] line:   1,
             #[cfg(feature="location")] column: 1,
         }
     }
 
-    #[inline(always)] fn content(&self) -> &[u8] {
-        self.content.as_ref()
+    #[inline(always)] fn _remained(&self) -> &[u8] {
+        unsafe {slice::from_raw_parts(self.curr, self.size - self.index)}
     }
-    #[inline(always)] fn remained(&self) -> &[u8] {
-        &self.content()[self.index..]
+    #[inline(always)] fn _get_at_offset_from_here(&self, o: isize) -> u8 {
+        unsafe {self.curr.offset(o).read()}
+    }
+    #[inline(always)] fn _read_from_offset_to_here(&self, from: isize) -> &[u8] {
+        unsafe {slice::from_raw_parts(self.curr.offset(from), (-from) as usize)}
+    }
+    #[inline(always)] fn _read_from_here_by_len(&self, len: usize) -> &[u8] {
+        unsafe {slice::from_raw_parts(self.curr, len)}
+    }
+    #[inline(always)] fn _remained_starts_with(&self, bytes: &[u8]) -> bool {
+        let bytes_len = bytes.len();
+        (self.size - self.index >= bytes_len) && self._read_from_here_by_len(bytes_len) == bytes
     }
 
     #[inline] fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
-            for b in &self.remained()[..n] {
+            for b in self._read_from_here_by_len(n) {
                 if &b'\n' != b {
                     column += 1
                 } else {
@@ -93,19 +97,19 @@ impl Reader {
             self.column = column;
         }
         self.index += n;
+        self.curr = unsafe {self.curr.add(n)};
     }
     #[cfg_attr(not(feature="location"), inline)] fn unwind_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
-            let c = self.content();
-            for i in 1..=n {let here = self.index - i;
-                if &c[here] != &b'\n' {
+            for i in 1..=n {
+                if self._get_at_offset_from_here(- (i as isize)) != b'\n' {
                     column -= 1
                 } else {
-                    line -= 1; column = 'c: {
+                    line -= 1; column = 'c: {let here = self.index - i;
                         for j in 1..=here {
-                            if &c[here - j] == &b'\n' {break 'c j}
+                            if self._get_at_offset_from_here(-((i+j) as isize)) == b'\n' {break 'c j}
                         }; here + 1
                     }
                 }
@@ -114,10 +118,11 @@ impl Reader {
             self.column = column;
         }
         self.index -= n;
+        self.curr = unsafe {self.curr.offset(- (n as isize))}
     }
     /// Advance by `max` bytes (or, if remained bytes is shorter than `max`, read all remained bytes)
     #[inline(always)] pub fn advance_by(&mut self, max: usize) {
-        self.advance_unchecked_by(max.min(self.remained().len()))
+        self.advance_unchecked_by(max.min(self.size - self.index))
     }
     /// Unwind the parsing point by `max` bytes (or, if already-read bytes is shorter than `max`, rewind all)
     /// 
@@ -129,7 +134,7 @@ impl Reader {
     /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
         self.advance_unchecked_by(
-            self.remained().iter().take_while(|b| condition(b)).count())
+            self._remained().iter().take_while(|b| condition(b)).count())
     }
     /// `.skip_while(|b| b.is_ascii_whitespace())`
     #[inline] pub fn skip_whitespace(&mut self) {
@@ -139,14 +144,14 @@ impl Reader {
     #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
         let start = self.index;
         self.skip_while(condition);
-        &self.content()[start..self.index]
+        self._read_from_offset_to_here(- ((self.index - start) as isize))
     }
 
     /// Read next one byte, or return None if the remained bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.index;
         self.advance_by(1);
-        (self.index != here).then(|| self.content()[here])
+        (self.index != here).then(|| self._get_at_offset_from_here(-1))
     }
     /// Read next one byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
@@ -156,27 +161,27 @@ impl Reader {
 
     /// Peek next byte (without consuming)
     #[inline(always)] pub fn peek(&self) -> Option<&u8> {
-        self.remained().get(0)
+        (self.size - self.index > 0).then(|| &self._read_from_here_by_len(1)[0])
     }
     /// Peek next byte of next byte (without consuming)
     #[inline] pub fn peek2(&self) -> Option<&u8> {
-        self.remained().get(1)
+        (self.size - self.index > 1).then(|| &self._read_from_here_by_len(2)[1])
     }
     /// Peek next byte of next byte of next byte (without consuming)
     pub fn peek3(&self) -> Option<&u8> {
-        self.remained().get(2)
+        (self.size - self.index > 2).then(|| &self._read_from_here_by_len(3)[2])
     }
 
     /// Read `token` if the remained bytes starts with it
     #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
         let token = token.as_ref();
-        self.remained().starts_with(token).then(|| self.advance_unchecked_by(token.len()))
+        self._remained_starts_with(token).then(|| self.advance_unchecked_by(token.len()))
     }
     /// Read first `token` in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `None` if none matched
     pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
         for i in 0..tokens.len() {
             let token = tokens[i].as_ref();
-            if self.remained().starts_with(token) {
+            if self._remained_starts_with(token) {
                 self.advance_unchecked_by(token.len());
                 return Some(i)
             }
@@ -210,10 +215,10 @@ impl Reader {
     #[inline] pub fn read_string(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
         let string = String::from_utf8(
-            self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+            self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
         ).ok()?;
         let eoq/* end of quotation */ = 0 + string.len() + 1;
-        if self.remained().get(eoq)? != &b'"' {return None}
+        if self._remained().get(eoq)? != &b'"' {return None}
 
         self.advance_unchecked_by(eoq + 1);
         Some(string)
@@ -224,10 +229,10 @@ impl Reader {
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
         let string = unsafe {String::from_utf8_unchecked(
-            self.remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+            self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
         )};
         let eoq = 0 + string.len() + 1;
-        if self.remained().get(eoq)? != &b'"' {return None}
+        if self._remained().get(eoq)? != &b'"' {return None}
 
         self.advance_unchecked_by(eoq + 1);
         Some(string)
@@ -246,7 +251,7 @@ impl Reader {
         if self.peek()? != &b'-' {
             self.read_uint().map(|u| u as isize)
         } else {
-            let (abs, n_digits) = self.remained()[1..].iter()
+            let (abs, n_digits) = self._remained()[1..].iter()
                 .map_while(|b| b.is_ascii_digit().then(|| *b - b'0'))
                 .fold((0, 0), |(abs, n), d| (abs*10+d as isize, n+1));
             (n_digits > 0).then(|| {

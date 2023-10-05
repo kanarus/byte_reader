@@ -16,4 +16,4 @@ categories    = ["parsing", "encoding", "rust-patterns", "text-processing"]
 location      = []
 
 ### DEBUG ###
-# default = ["location"]
+default = ["location"]

@@ -4,39 +4,39 @@ use std::format as f;
 #[test] fn test_whitespace() {
     let mut r = Reader::new(" ");
     r.skip_whitespace();
-    assert!(r.remained().is_empty());
+    assert!(r._remained().is_empty());
 
     let mut r = Reader::new("  a");
     r.skip_whitespace();
-    assert_eq!(r.remained(), b"a");
+    assert_eq!(r._remained(), b"a");
 }
 
 #[test] fn test_advance() {
     let mut r = Reader::new("Hello, world!");
 
     r.advance_by(1);
-    assert_eq!(r.remained(), b"ello, world!");
+    assert_eq!(r._remained(), b"ello, world!");
 
     r.advance_by(3);
-    assert_eq!(r.remained(), b"o, world!");
+    assert_eq!(r._remained(), b"o, world!");
 }
 
 #[test] fn test_rewind() {
     let mut r = Reader::new("Hello, world!\nMy name is byte_reader!");
     r.read_while(|b| b != &b'\n');
-    assert_eq!(r.remained(), b"\nMy name is byte_reader!");
+    assert_eq!(r._remained(), b"\nMy name is byte_reader!");
     #[cfg(feature="location")] assert_eq!(r.line,   1);
     #[cfg(feature="location")] assert_eq!(r.column, 14);
     r.advance_by(3);
-    assert_eq!(r.remained(), b" name is byte_reader!");
+    assert_eq!(r._remained(), b" name is byte_reader!");
     #[cfg(feature="location")] assert_eq!(r.line,   2);
     #[cfg(feature="location")] assert_eq!(r.column, 3);
     r.unwind_by(2);
-    assert_eq!(r.remained(), b"My name is byte_reader!");
+    assert_eq!(r._remained(), b"My name is byte_reader!");
     #[cfg(feature="location")] assert_eq!(r.line,   2);
     #[cfg(feature="location")] assert_eq!(r.column, 1);
     r.unwind_by(2);
-    assert_eq!(r.remained(), b"!\nMy name is byte_reader!");
+    assert_eq!(r._remained(), b"!\nMy name is byte_reader!");
     #[cfg(feature="location")] assert_eq!(r.line,   1);
     #[cfg(feature="location")] assert_eq!(r.column, 13);
 
@@ -45,15 +45,15 @@ use std::format as f;
     r.advance_by(1);
     r.read_while(|b| b != &b'\n');
     r.advance_by(1);
-    assert_eq!(r.remained(), b"kanarus!");
+    assert_eq!(r._remained(), b"kanarus!");
     #[cfg(feature="location")] assert_eq!(r.line,   3);
     #[cfg(feature="location")] assert_eq!(r.column, 1);
     r.unwind_by(1);
-    assert_eq!(r.remained(), b"\nkanarus!");
+    assert_eq!(r._remained(), b"\nkanarus!");
     #[cfg(feature="location")] assert_eq!(r.line,   2);
     #[cfg(feature="location")] assert_eq!(r.column, 12);
     r.unwind_by(1);
-    assert_eq!(r.remained(), b"!\nkanarus!");
+    assert_eq!(r._remained(), b"!\nkanarus!");
     #[cfg(feature="location")] assert_eq!(r.line,   2);
     #[cfg(feature="location")] assert_eq!(r.column, 11);
 
@@ -65,7 +65,7 @@ use std::format as f;
         r.read_while(|b| ! b.is_ascii_whitespace()),
         b"Hello,"
     );
-    assert_eq!(r.remained(), b" world!");
+    assert_eq!(r._remained(), b" world!");
 }
 
 #[test] fn test_parse_ident() {
@@ -75,7 +75,7 @@ use std::format as f;
 
     let ident = r.read_snake().unwrap();
     assert_eq!(ident, "Hello");
-    assert_eq!(r.remained(), b", world! I am a Reader!");
+    assert_eq!(r._remained(), b", world! I am a Reader!");
 
     assert!(r.read_snake().is_none());
     r.advance_by(1);
@@ -84,20 +84,20 @@ use std::format as f;
 
     let ident = r.read_snake().unwrap();
     assert_eq!(ident, "world");
-    assert_eq!(r.remained(), b"! I am a Reader!")
+    assert_eq!(r._remained(), b"! I am a Reader!")
 }
 
 #[test] fn test_parse_string_literal() {
     let mut r = Reader::new(f!(""));
     assert_eq!(r.read_string(), None);
-    assert_eq!(r.remained(), b"");
+    assert_eq!(r._remained(), b"");
 
     let mut r = Reader::new(f!("Yeah, \"Hello!"));
     assert_eq!(r.read_string(), None);
     r.consume("Yeah, ").unwrap();
-    assert_eq!(r.remained(), b"\"Hello!");
+    assert_eq!(r._remained(), b"\"Hello!");
     assert_eq!(r.read_string(), None);
-    assert_eq!(r.remained(), b"\"Hello!");
+    assert_eq!(r._remained(), b"\"Hello!");
 
     let mut r = Reader::new(f!("\
         \"Hello,\" He said, \"I am Reader!\"\
@@ -105,7 +105,7 @@ use std::format as f;
 
     let lit = r.read_string().unwrap();
     assert_eq!(lit, "Hello,");
-    assert_eq!(r.remained(), b" He said, \"I am Reader!\"");
+    assert_eq!(r._remained(), b" He said, \"I am Reader!\"");
 
     assert!(r.read_string().is_none());
     r.skip_whitespace();
@@ -118,21 +118,21 @@ use std::format as f;
 
     let lit = r.read_string().unwrap();
     assert_eq!(lit, "I am Reader!");
-    assert_eq!(r.remained(), b"");
+    assert_eq!(r._remained(), b"");
 }
 
 #[test] fn test_parse_int() {
     let mut r = Reader::new("42");
     assert_eq!(r.read_int(), Some(42));
-    assert!(r.remained().is_empty());
+    assert!(r._remained().is_empty());
 
     let mut r = Reader::new("-42");
     assert_eq!(r.read_int(), Some(-42));
-    assert!(r.remained().is_empty());
+    assert!(r._remained().is_empty());
 
     let mut r = Reader::new("-a");
     assert_eq!(r.read_int(), None);
-    assert_eq!(r.remained(), b"-a");
+    assert_eq!(r._remained(), b"-a");
 
     let mut r = Reader::new("\
         model Post {\n\
