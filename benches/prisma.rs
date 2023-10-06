@@ -52,7 +52,7 @@ mod prisma {
         fn parse(r: &mut byte_reader::Reader) -> Self {
             r.skip_whitespace();
             let (mut g, mut d) = (None, None);
-            while let Some(&next) = r.peek() {
+            while let Some(next) = r.peek() {
                 match next {
                     b'g' => g = Some(GeneratorClient::parse(r)),
                     b'd' => d = Some(Datasouce::parse(r)),
@@ -78,7 +78,7 @@ mod prisma {
             r.consume("client").unwrap();    r.skip_whitespace();
             r.consume("{").unwrap();         r.skip_whitespace();
             let (mut provider, mut output) = (None, None);
-            while r.peek().is_some_and(|b| b != &b'}') {
+            while r.peek().is_some_and(|b| b != b'}') {
                 r.skip_whitespace();
                 match r.consume_oneof(["provider", "output"]).unwrap() {
                     0 => {r.skip_whitespace();
@@ -113,7 +113,7 @@ mod prisma {
             let name = r.read_snake().unwrap(); r.skip_whitespace();
             r.consume("{").unwrap();            r.skip_whitespace();
             let (mut provider, mut url) = (None, None);
-            while r.peek().is_some_and(|b| b != &b'}') {
+            while r.peek().is_some_and(|b| b != b'}') {
                 r.skip_whitespace();
                 match r.consume_oneof(["provider", "url"]).unwrap() {
                     0 => {r.skip_whitespace();
