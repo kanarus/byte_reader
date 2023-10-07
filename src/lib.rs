@@ -65,7 +65,7 @@ impl<'b> Reader<'b> {
     #[inline(always)] fn _remained(&self) -> &[u8] {
         unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
     }
-    #[inline(always)] fn _get_at(&self, index: usize) -> &u8 {
+    #[inline(always)] fn _get(&self, index: usize) -> &u8 {
         unsafe {&*(self.head.add(index))}
     }
 
@@ -90,12 +90,12 @@ impl<'b> Reader<'b> {
             let mut line   = self.line;
             let mut column = self.column;
             for i in 1..=n {let here = self.index - i;
-                if self._get_at(here) != &b'\n' {
+                if self._get(here) != &b'\n' {
                     column -= 1
                 } else {
                     line -= 1; column = 'c: {
                         for j in 1..=here {
-                            if self._get_at(here - j) == &b'\n' {break 'c j}
+                            if self._get(here - j) == &b'\n' {break 'c j}
                         }; here + 1
                     }
                 }
@@ -105,7 +105,7 @@ impl<'b> Reader<'b> {
         }
         self.index -= n;
     }
-    /// Advance by `max` bytes (or, if remained bytes is shorter than `max`, read all remained bytes)
+    /// Advance by `max` bytes (or, if remaining bytes is shorter than `max`, read all remaining bytes)
     #[inline(always)] pub fn advance_by(&mut self, max: usize) {
         self.advance_unchecked_by(max.min(self.size - self.index))
     }
@@ -132,13 +132,13 @@ impl<'b> Reader<'b> {
         unsafe {slice::from_raw_parts(self.head.add(start), self.index - start)}
     }
 
-    /// Read next one byte, or return None if the remained bytes is empty
+    /// Read next byte, or return None if the remaining bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.index;
         self.advance_by(1);
-        (self.index != here).then(|| *self._get_at(here))
+        (self.index != here).then(|| *self._get(here))
     }
-    /// Read next one byte if the condition holds on it
+    /// Read next byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
         let value = self.peek()?.clone();
         condition(&value).then(|| {self.advance_unchecked_by(1); value})
@@ -146,18 +146,18 @@ impl<'b> Reader<'b> {
 
     /// Peek next byte (without consuming)
     #[inline(always)] pub fn peek(&self) -> Option<&u8> {
-        (self.size - self.index > 0).then(|| self._get_at(self.index))
+        (self.size - self.index > 0).then(|| self._get(self.index))
     }
     /// Peek next byte of next byte (without consuming)
     #[inline] pub fn peek2(&self) -> Option<&u8> {
-        (self.size - self.index > 1).then(|| self._get_at(self.index + 1))
+        (self.size - self.index > 1).then(|| self._get(self.index + 1))
     }
     /// Peek next byte of next byte of next byte (without consuming)
     pub fn peek3(&self) -> Option<&u8> {
-        (self.size - self.index > 2).then(|| self._get_at(self.index + 2))
+        (self.size - self.index > 2).then(|| self._get(self.index + 2))
     }
 
-    /// Read `token` if the remained bytes starts with it
+    /// Read `token` if the remaining bytes start with it
     #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
         let token = token.as_ref();
         let n = token.len();
@@ -165,7 +165,7 @@ impl<'b> Reader<'b> {
             slice::from_raw_parts(self.head.add(self.index), n)
         } == token).then(|| self.advance_unchecked_by(n))
     }
-    /// Read first `token` in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `None` if none matched
+    /// Read the first token in `tokens` that matches the start with the remaining bytes, and returns the index of the (matched) token, or `None` if none matches
     pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
         for i in 0..tokens.len() {
             let token = tokens[i].as_ref();
@@ -221,14 +221,14 @@ impl<'b> Reader<'b> {
     }
     /// Read an unsigned integer literal like `42`, `123` as `usize` if found
     /// 
-    /// - Panics if the integer is larger then `usize::MAX`
+    /// - Panics if the integer is larger than `usize::MAX`
     #[inline] pub fn read_uint(&mut self) -> Option<usize> {
         let digits = self.read_while(|b| b.is_ascii_digit());
         (digits.len() > 0).then(|| digits.into_iter().fold(0, |uint, d| uint*10 + (*d-b'0') as usize))
     }
     /// Read an integer literal like `42`, `-1111` as `isize` if found
     /// 
-    /// - Panics if the integer is larger then `isize::MAX` or smaller then `isize::MIN`
+    /// - Panics if not `isize::MIN` <= {the integer} <= `isize::MAX`
     #[inline] pub fn read_int(&mut self) -> Option<isize> {
         if self.peek()? != &b'-' {
             self.read_uint().map(|u| u as isize)
