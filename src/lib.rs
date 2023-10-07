@@ -86,7 +86,7 @@ impl<'b> Reader<'b> {
         self.index += n;
     }
     #[cfg_attr(not(feature="location"), inline)] fn unwind_unchecked_by(&mut self, n: usize) {
-        #[cfg(feature="location")] {
+        #[cfg(feature="location")] unsafe {
             let mut line   = self.line;
             let mut column = self.column;
             for i in 1..=n {let here = self.index - i;
