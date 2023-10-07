@@ -66,7 +66,7 @@ impl<'b> Reader<'b> {
         unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
     }
     #[inline(always)] fn _get(&self, index: usize) -> &u8 {
-        unsafe {&*(self.head.add(index))}
+        unsafe {&*self.head.add(index)}
     }
 
     #[inline] fn advance_unchecked_by(&mut self, n: usize) {
