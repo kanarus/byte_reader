@@ -1,9 +1,9 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
+#[cfg(test)] mod _test;
+
 use core::slice;
 use std::marker::PhantomData;
-
-#[cfg(test)] mod _test;
 
 /// A **minimal** byte-by-byte reader for parsing input
 /// 
@@ -73,7 +73,7 @@ impl<'b> Reader<'b> {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
-            for b in &self._remained()[..n] {
+            for b in unsafe {slice::from_raw_parts(self.head.add(self.index), n)} {
                 if &b'\n' != b {
                     column += 1
                 } else {
