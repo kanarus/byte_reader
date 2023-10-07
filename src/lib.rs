@@ -6,16 +6,12 @@ use core::slice;
 
 /// A **minimal** byte-by-byte reader for parsing input
 /// 
-/// <br/>
-/// 
-/// <h2><a href="https://github.com/kana-rus/byte_reader/blob/main/examples/usage.rs">Usage</a></h2>
-/// 
 /// ```
 /// use byte_reader::Reader;
 /// 
 /// fn main() {
 ///     // Get a input from a File, standard input, or others
-///     // Input must implement `AsRef<[u8]>`
+///     // Input must be a reference that implements `AsRef<[u8]>`
 ///     let sample_input = "Hello,    byte_reader!";
 /// 
 ///     // Create mutable `r`
@@ -54,7 +50,10 @@ pub struct Reader {
 }
 
 impl Reader {
-    pub fn new(content: impl AsRef<[u8]>) -> Self {
+    pub fn new<'b, Bytes: ?Sized>(content: &'b Bytes) -> Self
+    where
+        &'b Bytes: AsRef<[u8]>
+    {
         let slice = content.as_ref();
         Self {
             head:  slice.as_ptr(),
@@ -66,7 +65,8 @@ impl Reader {
     }
 
     #[inline(always)] fn _remained(&self) -> &[u8] {
-        unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
+        dbg!(self.index, self.size);
+        dbg!(unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)})
     }
     #[inline(always)] fn _remained_with_offset(&self, offset: usize) -> &[u8] {
         unsafe {slice::from_raw_parts(self.head.add(self.index + offset), self.size - self.index - offset)}
@@ -83,7 +83,6 @@ impl Reader {
     }
 
     #[inline] fn advance_unchecked_by(&mut self, n: usize) {
-        dbg!(self.index);
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
@@ -98,7 +97,6 @@ impl Reader {
             self.column = column;
         }
         self.index += n;
-        dbg!(self.index);
     }
     #[cfg_attr(not(feature="location"), inline)] fn unwind_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
@@ -133,7 +131,7 @@ impl Reader {
 
     /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
-        let by = self._remained().iter().take_while(|b| {dbg!(self.index); condition(b)}).count();
+        let by = self._remained().iter().take_while(|b| condition(b)).count();
         self.advance_unchecked_by(dbg!(by))
     }
     /// `.skip_while(|b| b.is_ascii_whitespace())`
