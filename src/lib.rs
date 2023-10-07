@@ -65,18 +65,10 @@ impl Reader {
     }
 
     #[inline(always)] fn _remained(&self) -> &[u8] {
-        dbg!(self.index, self.size);
-        dbg!(unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)})
-    }
-    #[inline(always)] fn _remained_with_offset(&self, offset: usize) -> &[u8] {
-        unsafe {slice::from_raw_parts(self.head.add(self.index + offset), self.size - self.index - offset)}
+        unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
     }
     #[inline(always)] fn _remained_to_len(&self, len: usize) -> &[u8] {
         unsafe {slice::from_raw_parts(self.head.add(self.index), len)}
-    }
-    #[inline(always)] fn _remained_starts_with(&self, token: &[u8]) -> bool {
-        let token_len = token.len();
-        self.size - self.index >= token_len && unsafe {slice::from_raw_parts(self.head.add(self.index), token_len) == token}
     }
     #[inline(always)] fn _get_at(&self, index: usize) -> u8 {
         unsafe {self.head.add(index).read()}
@@ -132,7 +124,7 @@ impl Reader {
     /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
         let by = self._remained().iter().take_while(|b| condition(b)).count();
-        self.advance_unchecked_by(dbg!(by))
+        self.advance_unchecked_by(by)
     }
     /// `.skip_while(|b| b.is_ascii_whitespace())`
     #[inline] pub fn skip_whitespace(&mut self) {
@@ -173,13 +165,13 @@ impl Reader {
     /// Read `token` if the remained bytes starts with it
     #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
         let token = token.as_ref();
-        self._remained_starts_with(token).then(|| self.advance_unchecked_by(token.len()))
+        self._remained().starts_with(token).then(|| self.advance_unchecked_by(token.len()))
     }
     /// Read first `token` in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `None` if none matched
     pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
         for i in 0..tokens.len() {
             let token = tokens[i].as_ref();
-            if self._remained_starts_with(token) {
+            if self._remained().starts_with(token) {
                 self.advance_unchecked_by(token.len());
                 return Some(i)
             }
@@ -213,7 +205,7 @@ impl Reader {
     #[inline] pub fn read_string(&mut self) -> Option<String> {
         if self.peek()? != b'"' {return None}
         let string = String::from_utf8(
-            self._remained_with_offset(1).iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+            self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
         ).ok()?;
         let eoq/* end of quotation */ = 0 + string.len() + 1;
         if self._remained().get(eoq)? != &b'"' {return None}
@@ -227,7 +219,7 @@ impl Reader {
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
         if self.peek()? != b'"' {return None}
         let string = unsafe {String::from_utf8_unchecked(
-            self._remained_with_offset(1).iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
+            self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
         )};
         let eoq = 0 + string.len() + 1;
         if self._remained().get(eoq)? != &b'"' {return None}
@@ -249,7 +241,7 @@ impl Reader {
         if self.peek()? != b'-' {
             self.read_uint().map(|u| u as isize)
         } else {
-            let (abs, n_digits) = self._remained_with_offset(1).iter()
+            let (abs, n_digits) = self._remained()[1..].iter()
                 .map_while(|b| b.is_ascii_digit().then(|| *b - b'0'))
                 .fold((0, 0), |(abs, n), d| (abs*10+d as isize, n+1));
             (n_digits > 0).then(|| {
