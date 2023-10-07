@@ -13,12 +13,6 @@ datasource db {
 }
 "#;
 
-/*
-    [2023-10-05 01:06+9:00]
-    * 229 ns/iter (+/- 15)
-    * 233 ns/iter (+/- 13)
-    * 213 ns/iter (+/- 18)
-*/
 #[bench] fn read_a_schema_dot_prisma(b: &mut test::Bencher) {
     use prisma::*;
     use std::format as f;
@@ -41,7 +35,7 @@ datasource db {
 
 mod prisma {
     pub trait Parse {
-        fn parse<B: AsRef<[u8]>>(r: &mut byte_reader::Reader<B>) -> Self;
+        fn parse(r: &mut byte_reader::Reader) -> Self;
     }
 
     #[derive(Debug, PartialEq)]
@@ -49,10 +43,10 @@ mod prisma {
         pub generator_client: GeneratorClient,
         pub datasource:       Datasouce,
     } impl Parse for Schema {
-        fn parse<B: AsRef<[u8]>>(r: &mut byte_reader::Reader<B>) -> Self {
+        fn parse(r: &mut byte_reader::Reader) -> Self {
             r.skip_whitespace();
             let (mut g, mut d) = (None, None);
-            while let Some(&next) = r.peek() {
+            while let Some(next) = r.peek() {
                 match next {
                     b'g' => g = Some(GeneratorClient::parse(r)),
                     b'd' => d = Some(Datasouce::parse(r)),
@@ -73,7 +67,7 @@ mod prisma {
         pub provider: String,
         pub output:   String,
     } impl Parse for GeneratorClient {
-        fn parse<B: AsRef<[u8]>>(r: &mut byte_reader::Reader<B>) -> Self {
+        fn parse(r: &mut byte_reader::Reader) -> Self {
             r.consume("generator").unwrap(); r.skip_whitespace();
             r.consume("client").unwrap();    r.skip_whitespace();
             r.consume("{").unwrap();         r.skip_whitespace();
@@ -108,7 +102,7 @@ mod prisma {
         pub provider: String,
         pub url:      String,
     } impl Parse for Datasouce {
-        fn parse<B: AsRef<[u8]>>(r: &mut byte_reader::Reader<B>) -> Self {
+        fn parse(r: &mut byte_reader::Reader) -> Self {
             r.consume("datasource").unwrap();   r.skip_whitespace();
             let name = r.read_snake().unwrap(); r.skip_whitespace();
             r.consume("{").unwrap();            r.skip_whitespace();

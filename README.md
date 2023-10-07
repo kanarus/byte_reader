@@ -20,7 +20,7 @@ use byte_reader::Reader;
 
 fn main() {
     // Get a input from a File, standard input, or others
-    // Input must implement `AsRef<[u8]>`
+    // Input must be a reference that implements `AsRef<[u8]>`
     let sample_input = "Hello,    byte_reader!";
 
     // Create mutable `r`
@@ -59,7 +59,7 @@ fn main() {
 You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
 
 ```rust
-/* enable "location" feature */
+/* activate "location" feature */
 use byte_reader::Reader;
 
 fn main() {
@@ -70,7 +70,7 @@ fn main() {
     r.skip_whitespace();
     let name_line   = r.line;   // 1
     let name_column = r.column; // 11
-    let name_index  = r.index;  // 11
+    let name_index  = r.index;  // 10
     let name = r.read_snake().unwrap(); // byte_reader
     r.consume("!").unwrap();
 
