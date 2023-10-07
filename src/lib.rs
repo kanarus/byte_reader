@@ -160,7 +160,10 @@ impl<'b> Reader<'b> {
     /// Read `token` if the remained bytes starts with it
     #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
         let token = token.as_ref();
-        self._remained().starts_with(token).then(|| self.advance_unchecked_by(token.len()))
+        let n = token.len();
+        (self.size - self.index >= n && unsafe {
+            slice::from_raw_parts(self.head.add(self.index), n)
+        } == token).then(|| self.advance_unchecked_by(n))
     }
     /// Read first `token` in `tokens` that the remained bytes starts with, and returns the index of the (matched) token, or `None` if none matched
     pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
