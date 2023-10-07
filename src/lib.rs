@@ -65,8 +65,8 @@ impl<'b> Reader<'b> {
     #[inline(always)] fn _remained(&self) -> &[u8] {
         unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
     }
-    #[inline(always)] fn _get(&self, index: usize) -> &u8 {
-        unsafe {&*self.head.add(index)}
+    #[inline(always)] unsafe fn _get_unchecked(&self, index: usize) -> &u8 {
+        &*self.head.add(index)
     }
 
     #[inline] fn advance_unchecked_by(&mut self, n: usize) {
@@ -90,12 +90,12 @@ impl<'b> Reader<'b> {
             let mut line   = self.line;
             let mut column = self.column;
             for i in 1..=n {let here = self.index - i;
-                if self._get(here) != &b'\n' {
+                if self._get_unchecked(here) != &b'\n' {
                     column -= 1
                 } else {
                     line -= 1; column = 'c: {
                         for j in 1..=here {
-                            if self._get(here - j) == &b'\n' {break 'c j}
+                            if self._get_unchecked(here - j) == &b'\n' {break 'c j}
                         }; here + 1
                     }
                 }
@@ -136,7 +136,7 @@ impl<'b> Reader<'b> {
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.index;
         self.advance_by(1);
-        (self.index != here).then(|| *self._get(here))
+        (self.index != here).then(|| *unsafe{ self._get_unchecked(here)})
     }
     /// Read next byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
@@ -146,15 +146,15 @@ impl<'b> Reader<'b> {
 
     /// Peek next byte (without consuming)
     #[inline(always)] pub fn peek(&self) -> Option<&u8> {
-        (self.size - self.index > 0).then(|| self._get(self.index))
+        (self.size - self.index > 0).then(|| unsafe {self._get_unchecked(self.index)})
     }
     /// Peek next byte of next byte (without consuming)
     #[inline] pub fn peek2(&self) -> Option<&u8> {
-        (self.size - self.index > 1).then(|| self._get(self.index + 1))
+        (self.size - self.index > 1).then(|| unsafe {self._get_unchecked(self.index + 1)})
     }
     /// Peek next byte of next byte of next byte (without consuming)
     pub fn peek3(&self) -> Option<&u8> {
-        (self.size - self.index > 2).then(|| self._get(self.index + 2))
+        (self.size - self.index > 2).then(|| unsafe {self._get_unchecked(self.index + 2)})
     }
 
     /// Read `token` if the remaining bytes start with it
