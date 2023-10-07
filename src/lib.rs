@@ -50,10 +50,7 @@ pub struct Reader {
 }
 
 impl Reader {
-    pub fn new<'b, Bytes: ?Sized>(content: &'b Bytes) -> Self
-    where
-        &'b Bytes: AsRef<[u8]>
-    {
+    pub fn new<'b, Bytes: ?Sized>(content: &'b Bytes) -> Self where &'b Bytes: AsRef<[u8]> {
         let slice = content.as_ref();
         Self {
             head:  slice.as_ptr(),
@@ -201,12 +198,9 @@ impl Reader {
     /// - Doesn't handle escape sequences
     #[inline] pub fn read_string(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
-        let string = String::from_utf8(
-            self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
-        ).ok()?;
+        let string = String::from_utf8(self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()).ok()?;
         let eoq/* end of quotation */ = 0 + string.len() + 1;
         if self._remained().get(eoq)? != &b'"' {return None}
-
         self.advance_unchecked_by(eoq + 1);
         Some(string)
     }
@@ -215,12 +209,9 @@ impl Reader {
     /// - Doesn't handle escape sequences
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
         if self.peek()? != &b'"' {return None}
-        let string = unsafe {String::from_utf8_unchecked(
-            self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
-        )};
+        let string = unsafe {String::from_utf8_unchecked(self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect())};
         let eoq = 0 + string.len() + 1;
         if self._remained().get(eoq)? != &b'"' {return None}
-
         self.advance_unchecked_by(eoq + 1);
         Some(string)
     }
