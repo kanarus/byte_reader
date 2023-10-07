@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
 use core::slice;
+use std::marker::PhantomData;
 
 #[cfg(test)] mod _test;
 
@@ -35,7 +36,7 @@ use core::slice;
 /// - `"location"`
 /// 
 /// You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
-pub struct Reader {
+pub struct Reader<'b> {_lifetime: PhantomData<&'b()>,
     head: *const u8,
     size: usize,
 
@@ -49,10 +50,10 @@ pub struct Reader {
     #[cfg(feature="location")] pub column: usize,
 }
 
-impl Reader {
-    pub fn new<'b, Bytes: ?Sized>(content: &'b Bytes) -> Self where &'b Bytes: AsRef<[u8]> {
+impl<'b> Reader<'b> {
+    pub fn new(content: &'b (impl AsRef<[u8]> + ?Sized)) -> Self {
         let slice = content.as_ref();
-        Self {
+        Self {_lifetime: PhantomData,
             head:  slice.as_ptr(),
             size:  slice.len(),
             index: 0,
