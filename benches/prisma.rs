@@ -13,12 +13,6 @@ datasource db {
 }
 "#;
 
-/*
-    [2023-10-05 01:06+9:00]
-    * 229 ns/iter (+/- 15)
-    * 233 ns/iter (+/- 13)
-    * 213 ns/iter (+/- 18)
-*/
 #[bench] fn read_a_schema_dot_prisma(b: &mut test::Bencher) {
     use prisma::*;
     use std::format as f;
@@ -78,7 +72,7 @@ mod prisma {
             r.consume("client").unwrap();    r.skip_whitespace();
             r.consume("{").unwrap();         r.skip_whitespace();
             let (mut provider, mut output) = (None, None);
-            while r.peek().is_some_and(|b| b != b'}') {
+            while r.peek().is_some_and(|b| b != &b'}') {
                 r.skip_whitespace();
                 match r.consume_oneof(["provider", "output"]).unwrap() {
                     0 => {r.skip_whitespace();
@@ -113,7 +107,7 @@ mod prisma {
             let name = r.read_snake().unwrap(); r.skip_whitespace();
             r.consume("{").unwrap();            r.skip_whitespace();
             let (mut provider, mut url) = (None, None);
-            while r.peek().is_some_and(|b| b != b'}') {
+            while r.peek().is_some_and(|b| b != &b'}') {
                 r.skip_whitespace();
                 match r.consume_oneof(["provider", "url"]).unwrap() {
                     0 => {r.skip_whitespace();

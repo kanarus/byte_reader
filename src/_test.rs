@@ -121,7 +121,7 @@ use crate::Reader;
     assert_eq!(r.read_snake().unwrap(), "He");
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "said");
-    assert_eq!(r.peek().unwrap(), b',');
+    assert_eq!(r.peek().unwrap(), &b',');
     r.advance_by(1);
     r.skip_whitespace();
 
@@ -156,7 +156,7 @@ use crate::Reader;
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "Post");
     r.skip_whitespace();
-    assert_eq!(r.peek().unwrap(), b'{'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'{'); r.advance_by(1);
     r.skip_whitespace();
 
     #[cfg(feature="location")] assert_eq!(r.line, 2);
@@ -164,15 +164,15 @@ use crate::Reader;
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "String");
     r.skip_whitespace();
-    assert_eq!(r.peek().unwrap(), b'@'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'@'); r.advance_by(1);
     assert_eq!(r.read_snake().unwrap(), "db");
     assert!(r.consume(".").is_some());
     assert_eq!(r.read_snake().unwrap(), "VarChar");
-    assert_eq!(r.peek().unwrap(), b'('); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'('); r.advance_by(1);
 
     let int = r.read_uint().unwrap();
     assert_eq!(int, 200);
-    assert_eq!(r.peek().unwrap(), b')'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b')'); r.advance_by(1);
 
     r.skip_whitespace();
 
@@ -181,13 +181,13 @@ use crate::Reader;
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "Int");
     r.skip_whitespace();
-    assert_eq!(r.peek().unwrap(), b'@'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'@'); r.advance_by(1);
     assert_eq!(r.read_snake().unwrap(), "default");
-    assert_eq!(r.peek().unwrap(), b'('); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'('); r.advance_by(1);
 
     let int = r.read_int().unwrap();
     assert_eq!(int, 1);
-    assert_eq!(r.peek().unwrap(), b')'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b')'); r.advance_by(1);
 
     r.skip_whitespace();
 
@@ -196,17 +196,17 @@ use crate::Reader;
     r.skip_whitespace();
     assert_eq!(r.read_snake().unwrap(), "Int");
     r.skip_whitespace();
-    assert_eq!(r.peek().unwrap(), b'@'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'@'); r.advance_by(1);
     assert_eq!(r.read_snake().unwrap(), "default");
-    assert_eq!(r.peek().unwrap(), b'('); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'('); r.advance_by(1);
 
     let int = r.read_int().unwrap();
     assert_eq!(int, -42);
-    assert_eq!(r.peek().unwrap(), b')'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b')'); r.advance_by(1);
 
     r.skip_whitespace();
 
     #[cfg(feature="location")] assert_eq!(r.line, 5);
-    assert_eq!(r.peek().unwrap(), b'}'); r.advance_by(1);
+    assert_eq!(r.peek().unwrap(), &b'}'); r.advance_by(1);
     assert_eq!(r.peek(), None)
 }

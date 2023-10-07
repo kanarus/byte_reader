@@ -67,18 +67,15 @@ impl Reader {
     #[inline(always)] fn _remained(&self) -> &[u8] {
         unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
     }
-    #[inline(always)] fn _remained_to_len(&self, len: usize) -> &[u8] {
-        unsafe {slice::from_raw_parts(self.head.add(self.index), len)}
-    }
-    #[inline(always)] fn _get_at(&self, index: usize) -> u8 {
-        unsafe {self.head.add(index).read()}
+    #[inline(always)] fn _get_at(&self, index: usize) -> &u8 {
+        unsafe {&*(self.head.add(index))}
     }
 
     #[inline] fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
-            for b in self._remained_to_len(n) {
+            for b in &self._remained()[..n] {
                 if &b'\n' != b {
                     column += 1
                 } else {
@@ -95,12 +92,12 @@ impl Reader {
             let mut line   = self.line;
             let mut column = self.column;
             for i in 1..=n {let here = self.index - i;
-                if self._get_at(here) != b'\n' {
+                if self._get_at(here) != &b'\n' {
                     column -= 1
                 } else {
                     line -= 1; column = 'c: {
                         for j in 1..=here {
-                            if self._get_at(here - j) == b'\n' {break 'c j}
+                            if self._get_at(here - j) == &b'\n' {break 'c j}
                         }; here + 1
                     }
                 }
@@ -141,7 +138,7 @@ impl Reader {
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.index;
         self.advance_by(1);
-        (self.index != here).then(|| self._get_at(here))
+        (self.index != here).then(|| *self._get_at(here))
     }
     /// Read next one byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
@@ -150,15 +147,15 @@ impl Reader {
     }
 
     /// Peek next byte (without consuming)
-    #[inline(always)] pub fn peek(&self) -> Option<u8> {
+    #[inline(always)] pub fn peek(&self) -> Option<&u8> {
         (self.size - self.index > 0).then(|| self._get_at(self.index))
     }
     /// Peek next byte of next byte (without consuming)
-    #[inline] pub fn peek2(&self) -> Option<u8> {
+    #[inline] pub fn peek2(&self) -> Option<&u8> {
         (self.size - self.index > 1).then(|| self._get_at(self.index + 1))
     }
     /// Peek next byte of next byte of next byte (without consuming)
-    pub fn peek3(&self) -> Option<u8> {
+    pub fn peek3(&self) -> Option<&u8> {
         (self.size - self.index > 2).then(|| self._get_at(self.index + 2))
     }
 
@@ -203,7 +200,7 @@ impl Reader {
     /// - Returns `None` if the quoted bytes is not UTF-8
     /// - Doesn't handle escape sequences
     #[inline] pub fn read_string(&mut self) -> Option<String> {
-        if self.peek()? != b'"' {return None}
+        if self.peek()? != &b'"' {return None}
         let string = String::from_utf8(
             self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
         ).ok()?;
@@ -217,7 +214,7 @@ impl Reader {
     /// 
     /// - Doesn't handle escape sequences
     pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
-        if self.peek()? != b'"' {return None}
+        if self.peek()? != &b'"' {return None}
         let string = unsafe {String::from_utf8_unchecked(
             self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()
         )};
@@ -238,7 +235,7 @@ impl Reader {
     /// 
     /// - Panics if the integer is larger then `isize::MAX` or smaller then `isize::MIN`
     #[inline] pub fn read_int(&mut self) -> Option<isize> {
-        if self.peek()? != b'-' {
+        if self.peek()? != &b'-' {
             self.read_uint().map(|u| u as isize)
         } else {
             let (abs, n_digits) = self._remained()[1..].iter()
