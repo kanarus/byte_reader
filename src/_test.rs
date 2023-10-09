@@ -10,6 +10,13 @@ use crate::Reader;
     assert_eq!(r._remained(), b"a");
 }
 
+#[test] fn test_consume() {
+    let input = String::from("--boundary");
+    let mut r = Reader::new(input.as_bytes());
+    assert_eq!(r.consume_oneof(["--", "\r\n"]), Some(0));
+    assert_eq!(r._remained(), b"boundary");
+}
+
 #[test] fn test_advance() {
     let mut r = Reader::new("Hello, world!");
 
