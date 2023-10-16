@@ -56,7 +56,7 @@ fn main() {
 ## Features
 - `"location"`
 
-You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
+You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
 
 ```rust
 /* activate "location" feature */

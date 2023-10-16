@@ -35,15 +35,12 @@ use std::marker::PhantomData;
 /// ## Features
 /// - `"location"`
 /// 
-/// You can track the reader's parsing location ( **line**, **column** and **index** ) in the input bytes.
+/// You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
 pub struct Reader<'b> {_lifetime: PhantomData<&'b()>,
     head: *const u8,
     size: usize,
 
-    #[cfg(not(feature="location"))] index: usize,
-    /// Index of current parsing point
-    #[cfg(feature="location")]  pub index: usize,
-
+    pub index: usize,
     /// Line of current parsing point
     #[cfg(feature="location")] pub line:   usize,
     /// Column of current parsing point
