@@ -41,11 +41,15 @@ pub struct Reader<'b> {_lifetime: PhantomData<&'b()>,
     size: usize,
 
     pub index: usize,
+    
     /// Line of current parsing point
     #[cfg(feature="location")] pub line:   usize,
     /// Column of current parsing point
     #[cfg(feature="location")] pub column: usize,
-}
+} const _: () = {
+    unsafe impl<'b> Send for Reader<'b> {}
+    unsafe impl<'b> Sync for Reader<'b> {}
+};
 
 impl<'b> Reader<'b> {
     pub fn new(content: &'b (impl AsRef<[u8]> + ?Sized)) -> Self {
