@@ -13,7 +13,8 @@ use byte_reader::Reader;
     r.consume("Hello").unwrap();
     r.consume(",").unwrap();
     r.skip_whitespace();
-    let name = r.read_snake().unwrap(); // byte_reader
+    let name = r.read_while(|b| b != &b'!'); // b"byte_reader"
+    let name = String::from_utf8_lossy(name).to_string();
     r.consume("!").unwrap();
 
     println!("Greeted to `{name}`.");
@@ -28,7 +29,8 @@ use byte_reader::Reader;
     let name_line   = r.line;   // 1
     let name_column = r.column; // 11
     let name_index  = r.index;  // 10
-    let name = r.read_snake().unwrap(); // byte_reader
+    let name = r.read_while(|b| b != &b'!'); // b"byte_reader"
+    let name = String::from_utf8_lossy(name).to_string();
     r.consume("!").unwrap();
 
     println!("Greeted to `{name}`.");

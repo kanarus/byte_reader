@@ -20,7 +20,7 @@ use byte_reader::Reader;
 
 fn main() {
     // Get a input from a File, standard input, or others
-    // Input must be a reference that implements `AsRef<[u8]>`
+    // Input must implement `AsRef<[u8]>`
     let sample_input = "Hello,    byte_reader!";
 
     // Create mutable `r`
@@ -31,7 +31,8 @@ fn main() {
     r.consume("Hello").unwrap();
     r.consume(",").unwrap();
     r.skip_whitespace();
-    let name = r.read_snake().unwrap(); // byte_reader
+    let name = r.read_while(|b| b != &b'!'); // b"byte_reader"
+    let name = String::from_utf8_lossy(name).to_string();
     r.consume("!").unwrap();
 
     println!("Greeted to `{name}`.");
@@ -41,20 +42,25 @@ fn main() {
 <br/>
 
 ## Operations
-- `advance_by`, `unwind_by`
+- `read_while`
 - `next`, `next_if`
 - `peek`, `peek2`, `peek3`
+- `advance_by`, `unwind_by`
 - `consume`, `consume_oneof`
 - `skip_while`, `skip_whitespace`
-- `read_while`
-- `read_uint`, `read_int`
-- `read_string`, `read_string_unchecked`
-- `read_camel`, `read_snake`, `read_kebab`
 
 <br/>
 
 ## Features
-- `"location"`
+### `"text"`
+
+Some utility methods for text-parsing are available：
+
+  - `read_quoted_by`
+  - `read_uint`, `read_int`
+  - `read_camel`, `read_snake`, `read_kebab`
+
+### `"location"`
 
 You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
 
@@ -71,7 +77,7 @@ fn main() {
     let name_line   = r.line;   // 1
     let name_column = r.column; // 11
     let name_index  = r.index;  // 10
-    let name = r.read_snake().unwrap(); // byte_reader
+    let name = r.read_snake().unwrap(); // "byte_reader"
     r.consume("!").unwrap();
 
     println!("Greeted to `{name}`.");

@@ -5,37 +5,6 @@
 use core::slice;
 use std::marker::PhantomData;
 
-/// A **minimal** byte-by-byte reader for parsing input
-/// 
-/// ```
-/// use byte_reader::Reader;
-/// 
-/// fn main() {
-///     // Get a input from a File, standard input, or others
-///     // Input must be a reference that implements `AsRef<[u8]>`
-///     let sample_input = "Hello,    byte_reader!";
-/// 
-///     // Create mutable `r`
-///     let mut r = Reader::new(sample_input);
-/// 
-///     // Use some simple operations
-///     // to parse the input
-///     r.consume("Hello").unwrap();
-///     r.consume(",").unwrap();
-///     r.skip_whitespace();
-///     let name = r.read_snake().unwrap(); // byte_reader
-///     r.consume("!").unwrap();
-/// 
-///     println!("Greeted to `{name}`.");
-/// }
-/// ```
-/// 
-/// <br/>
-/// 
-/// ## Features
-/// - `"location"`
-/// 
-/// You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
 pub struct Reader<'b> {_lifetime: PhantomData<&'b()>,
     head: *const u8,
     size: usize,
@@ -122,9 +91,9 @@ impl<'b> Reader<'b> {
         let by = self._remained().iter().take_while(|b| condition(b)).count();
         self.advance_unchecked_by(by)
     }
-    /// `.skip_while(|b| b.is_ascii_whitespace())`
+    /// `skip_while(u8::is_ascii_whitespace)`
     #[inline] pub fn skip_whitespace(&mut self) {
-        self.skip_while(|b| b.is_ascii_whitespace())
+        self.skip_while(u8::is_ascii_whitespace)
     }
     /// Read next byte while the condition holds on it
     #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
@@ -176,7 +145,10 @@ impl<'b> Reader<'b> {
             }
         }; None
     }
+}
 
+#[cfg(feature="text")]
+impl<'b> Reader<'b> {
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String` if found
     #[inline] pub fn read_camel(&mut self) -> Option<String> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec();
@@ -196,30 +168,20 @@ impl<'b> Reader<'b> {
         (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
     }
 
-    /// Read a double-quoted **UTF-8** string literal like `"Hello, world!"`, `"application/json"`, ... and return the quoted content as `String`
+    /// Read all bytes enclosed between `left` and `right`, then consume `left`, the bytes and `right`, and return the bytes.
     /// 
-    /// - Returns `None` if expected `"`s were not found
-    /// - Returns `None` if the quoted bytes is not UTF-8
-    /// - Doesn't handle escape sequences
-    #[inline] pub fn read_string(&mut self) -> Option<String> {
-        if self.peek()? != &b'"' {return None}
-        let string = String::from_utf8(self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect()).ok()?;
-        let eoq/* end of quotation */ = 0 + string.len() + 1;
-        if self._remained().get(eoq)? != &b'"' {return None}
+    /// Or, returns `None` if `left` or `right` is not found in remaining bytes.
+    #[inline] pub fn read_quoted_by(&mut self, left: u8, right: u8) -> Option<&[u8]> {
+        if self.peek()? != &left {return None}
+        let content_len = self._remained()[1..].iter().take_while(|b| b != &&right).count();
+        let eoq /* end of quotation */ = 0 + content_len + 1;
+        if self._remained().get(eoq)? != &right {return None}
+
         self.advance_unchecked_by(eoq + 1);
-        Some(string)
+
+        Some(unsafe {slice::from_raw_parts(self.head.add(self.index - eoq), content_len)})
     }
-    /// Read a double-quoted string literal like `"Hello, world!"`, `"application/json"`, ... the  and return the quoted content as `String` **without checking** if the content bytes is valid UTF-8
-    /// 
-    /// - Doesn't handle escape sequences
-    pub unsafe fn read_string_unchecked(&mut self) -> Option<String> {
-        if self.peek()? != &b'"' {return None}
-        let string = unsafe {String::from_utf8_unchecked(self._remained()[1..].iter().map_while(|b| (b != &b'"').then(|| *b)).collect())};
-        let eoq = 0 + string.len() + 1;
-        if self._remained().get(eoq)? != &b'"' {return None}
-        self.advance_unchecked_by(eoq + 1);
-        Some(string)
-    }
+
     /// Read an unsigned integer literal like `42`, `123` as `usize` if found
     /// 
     /// - Panics if the integer is larger than `usize::MAX`

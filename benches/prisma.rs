@@ -34,8 +34,23 @@ datasource db {
 }
 
 mod prisma {
+    use byte_reader::Reader;
+
     pub trait Parse {
-        fn parse(r: &mut byte_reader::Reader) -> Self;
+        fn parse(r: &mut Reader) -> Self;
+    }
+
+    #[cfg(feature="text")]
+    fn read_string(r: &mut Reader) -> Option<String> {
+        r.read_quoted_by(b'"', b'"')
+            .map(|bytes| String::from_utf8(bytes.to_vec()).unwrap())
+    }
+    #[cfg(not(feature="text"))]
+    fn read_string(r: &mut Reader) -> Option<String> {
+        r.consume("\"")?;
+        let string = String::from_utf8(r.read_while(|b| b != &b'"').to_vec()).unwrap();
+        r.consume("\"").unwrap();
+        Some(string)
     }
 
     #[derive(Debug, PartialEq)]
@@ -43,7 +58,7 @@ mod prisma {
         pub generator_client: GeneratorClient,
         pub datasource:       Datasouce,
     } impl Parse for Schema {
-        fn parse(r: &mut byte_reader::Reader) -> Self {
+        fn parse(r: &mut Reader) -> Self {
             r.skip_whitespace();
             let (mut g, mut d) = (None, None);
             while let Some(next) = r.peek() {
@@ -67,7 +82,7 @@ mod prisma {
         pub provider: String,
         pub output:   String,
     } impl Parse for GeneratorClient {
-        fn parse(r: &mut byte_reader::Reader) -> Self {
+        fn parse(r: &mut Reader) -> Self {
             r.consume("generator").unwrap(); r.skip_whitespace();
             r.consume("client").unwrap();    r.skip_whitespace();
             r.consume("{").unwrap();         r.skip_whitespace();
@@ -77,11 +92,11 @@ mod prisma {
                 match r.consume_oneof(["provider", "output"]).unwrap() {
                     0 => {r.skip_whitespace();
                         r.consume("=").unwrap(); r.skip_whitespace();
-                        provider = Some(r.read_string().unwrap());
+                        provider = Some(read_string(r).unwrap());
                     }
                     1 => {r.skip_whitespace();
                         r.consume("=").unwrap(); r.skip_whitespace();
-                        output = Some(r.read_string().unwrap());
+                        output = Some(read_string(r).unwrap());
                     }
                     _ => unreachable!(),
                 }
@@ -102,23 +117,31 @@ mod prisma {
         pub provider: String,
         pub url:      String,
     } impl Parse for Datasouce {
-        fn parse(r: &mut byte_reader::Reader) -> Self {
-            r.consume("datasource").unwrap();   r.skip_whitespace();
-            let name = r.read_snake().unwrap(); r.skip_whitespace();
-            r.consume("{").unwrap();            r.skip_whitespace();
+        fn parse(r: &mut Reader) -> Self {
+            r.consume("datasource").unwrap();
+            r.skip_whitespace();
+
+            let name = String::from_utf8(
+                r.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec()
+            ).unwrap();
+            r.skip_whitespace();
+
+            r.consume("{").unwrap();
+            r.skip_whitespace();
+
             let (mut provider, mut url) = (None, None);
             while r.peek().is_some_and(|b| b != &b'}') {
                 r.skip_whitespace();
                 match r.consume_oneof(["provider", "url"]).unwrap() {
                     0 => {r.skip_whitespace();
                         r.consume("=").unwrap(); r.skip_whitespace();
-                        provider = Some(r.read_string().unwrap());
+                        provider = Some(read_string(r).unwrap());
                     }
                     1 => {r.skip_whitespace();
                         r.consume("=").unwrap(); r.skip_whitespace();
                         r.consume("env").unwrap();
                         r.consume("(").unwrap();
-                        url = Some(r.read_string().unwrap());
+                        url = Some(read_string(r).unwrap());
                         r.consume(")");
                     }
                     _ => unreachable!(),

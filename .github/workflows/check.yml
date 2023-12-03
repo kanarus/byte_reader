@@ -9,6 +9,10 @@ jobs:
   cargo-check:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        features: ["location", "text", "location,text"]
+
     steps:
       - uses: actions/checkout@v3
 
@@ -18,10 +22,13 @@ jobs:
           profile:   minimal
           override:  true
 
-      - uses: actions-rs/cargo@v1
+      - name: Check in vanilla
+        uses: actions-rs/cargo@v1
         with:
           command: check
-      - uses: actions-rs/cargo@v1
+
+      - name: Check with features
+        uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --features location
+          args: --features ${{ matrix.features }}
