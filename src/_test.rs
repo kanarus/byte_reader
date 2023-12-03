@@ -85,6 +85,7 @@ use crate::Reader;
     assert_eq!(r._remained(), b"");
 }
 
+#[cfg(feature="text")]
 #[test] fn test_read_ident() {
     let mut r = Reader::new("Hello, world! I am a Reader!");
     assert_eq!(r._remained(), b"Hello, world! I am a Reader!");
@@ -103,40 +104,50 @@ use crate::Reader;
     assert_eq!(r._remained(), b"! I am a Reader!")
 }
 
-#[test] fn test_read_string() {
+#[cfg(feature="text")]
+#[test] fn test_read_quoted() {
     let mut r = Reader::new("");
-    assert_eq!(r.read_string(), None);
+    assert_eq!(r.read_quoted_by(b'"', b'"'), None);
     assert_eq!(r._remained(), b"");
 
     let mut r = Reader::new("Yeah, \"Hello!");
-    assert_eq!(r.read_string(), None);
+    assert_eq!(r.read_quoted_by(b'"', b'"'), None);
     r.consume("Yeah, ").unwrap();
     assert_eq!(r._remained(), b"\"Hello!");
-    assert_eq!(r.read_string(), None);
+    assert_eq!(r.read_quoted_by(b'"', b'"'), None);
     assert_eq!(r._remained(), b"\"Hello!");
 
     let mut r = Reader::new("\
-        \"Hello,\" He said, \"I am Reader!\"\
+        \"Hello,\" (He said,) \"I am Reader!\"\
     ");
 
-    let lit = r.read_string().unwrap();
-    assert_eq!(lit, "Hello,");
-    assert_eq!(r._remained(), b" He said, \"I am Reader!\"");
+    let lit = r.read_quoted_by(b'"', b'"').unwrap();
+    assert_eq!(lit, b"Hello,");
+    assert_eq!(r._remained(), b" (He said,) \"I am Reader!\"");
 
-    assert!(r.read_string().is_none());
-    r.skip_whitespace();
-    assert_eq!(r.read_snake().unwrap(), "He");
-    r.skip_whitespace();
-    assert_eq!(r.read_snake().unwrap(), "said");
-    assert_eq!(r.peek().unwrap(), &b',');
-    r.advance_by(1);
+    assert!(r.read_quoted_by(b'"', b'"').is_none());
     r.skip_whitespace();
 
-    let lit = r.read_string().unwrap();
-    assert_eq!(lit, "I am Reader!");
+    let parenthized = r.read_quoted_by(b'(', b')').unwrap();
+    {
+        let mut r = Reader::new(parenthized);
+
+        assert_eq!(r.read_snake().unwrap(), "He");
+        r.skip_whitespace();
+        assert_eq!(r.read_snake().unwrap(), "said");
+        assert_eq!(r.peek().unwrap(), &b',');
+        r.advance_by(1);
+    }
+    assert_eq!(r._remained(), b" \"I am Reader!\"");
+
+    r.skip_whitespace();
+
+    let lit = r.read_quoted_by(b'"', b'"').unwrap();
+    assert_eq!(lit, b"I am Reader!");
     assert_eq!(r._remained(), b"");
 }
 
+#[cfg(feature="text")]
 #[test] fn test_read_int() {
     let mut r = Reader::new("42");
     assert_eq!(r.read_int(), Some(42));

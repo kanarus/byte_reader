@@ -1,6 +1,6 @@
 [package]
 name          = "byte_reader"
-version       = "1.1.2"
+version       = "1.2.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 documentation = "https://docs.rs/byte_reader"
@@ -14,6 +14,7 @@ categories    = ["parsing", "encoding", "rust-patterns", "text-processing"]
 
 [features]
 location      = []
+text          = []
 
 ### DEBUG ###
-# default = ["location"]
+#default = ["location", "text"]
