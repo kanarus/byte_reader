@@ -1,0 +1,11 @@
+[package]
+name    = "byte_reader_dev"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+byte_reader = { version = "1.2", path = "../package" }
+
+[features]
+text     = ["byte_reader/text"]
+location = ["byte_reader/location"]
