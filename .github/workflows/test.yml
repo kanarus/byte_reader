@@ -23,13 +23,8 @@ jobs:
 
       - name: Test in vanilla
         working-directory: dev
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run:  cargo test
 
       - name: Test with features
         working-directory: dev
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features ${{ matrix.features }}
+        run:  cargo test --features ${{ matrix.features }}

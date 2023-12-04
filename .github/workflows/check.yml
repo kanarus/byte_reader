@@ -24,13 +24,8 @@ jobs:
 
       - name: Check in vanilla
         working-directory: ${{ matrix.directory }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+        run:  cargo check
 
       - name: Check with features
         working-directory: ${{ matrix.directory }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --features ${{ matrix.features }}
+        run:  cargo check --features ${{ matrix.features }}
