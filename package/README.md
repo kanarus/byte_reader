@@ -42,6 +42,7 @@ fn main() {
 <br/>
 
 ## Operations
+- `remaining`
 - `read_while`
 - `next`, `next_if`
 - `peek`, `peek2`, `peek3`

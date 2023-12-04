@@ -1,29 +1,25 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
-#[cfg(test)] mod _test;
-
 use core::slice;
 use std::marker::PhantomData;
 
-pub struct Reader<'b> {_lifetime: PhantomData<&'b()>,
+pub struct Reader<'b> {__: PhantomData<&'b()>,
     head: *const u8,
     size: usize,
-
     pub index: usize,
-    
     /// Line of current parsing point
-    #[cfg(feature="location")] pub line:   usize,
+    #[cfg(feature="location")] pub line: usize,
     /// Column of current parsing point
     #[cfg(feature="location")] pub column: usize,
-} const _: () = {
-    unsafe impl<'b> Send for Reader<'b> {}
-    unsafe impl<'b> Sync for Reader<'b> {}
-};
+}
+
+unsafe impl<'b> Send for Reader<'b> {}
+unsafe impl<'b> Sync for Reader<'b> {}
 
 impl<'b> Reader<'b> {
     pub fn new(content: &'b (impl AsRef<[u8]> + ?Sized)) -> Self {
         let slice = content.as_ref();
-        Self {_lifetime: PhantomData,
+        Self {__: PhantomData,
             head:  slice.as_ptr(),
             size:  slice.len(),
             index: 0,
@@ -32,9 +28,10 @@ impl<'b> Reader<'b> {
         }
     }
 
-    #[inline(always)] fn _remained(&self) -> &[u8] {
+    #[inline(always)] pub fn remaining(&self) -> &[u8] {
         unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
     }
+
     #[inline(always)] unsafe fn _get_unchecked(&self, index: usize) -> &u8 {
         &*self.head.add(index)
     }
@@ -88,7 +85,7 @@ impl<'b> Reader<'b> {
 
     /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
-        let by = self._remained().iter().take_while(|b| condition(b)).count();
+        let by = self.remaining().iter().take_while(|b| condition(b)).count();
         self.advance_unchecked_by(by)
     }
     /// `skip_while(u8::is_ascii_whitespace)`
@@ -139,7 +136,7 @@ impl<'b> Reader<'b> {
     pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
         for i in 0..tokens.len() {
             let token = tokens[i].as_ref();
-            if self._remained().starts_with(token) {
+            if self.remaining().starts_with(token) {
                 self.advance_unchecked_by(token.len());
                 return Some(i)
             }
@@ -173,9 +170,9 @@ impl<'b> Reader<'b> {
     /// Or, returns `None` if `left` or `right` is not found in remaining bytes.
     #[inline] pub fn read_quoted_by(&mut self, left: u8, right: u8) -> Option<&[u8]> {
         if self.peek()? != &left {return None}
-        let content_len = self._remained()[1..].iter().take_while(|b| b != &&right).count();
+        let content_len = self.remaining()[1..].iter().take_while(|b| b != &&right).count();
         let eoq /* end of quotation */ = 0 + content_len + 1;
-        if self._remained().get(eoq)? != &right {return None}
+        if self.remaining().get(eoq)? != &right {return None}
 
         self.advance_unchecked_by(eoq + 1);
 
@@ -196,7 +193,7 @@ impl<'b> Reader<'b> {
         if self.peek()? != &b'-' {
             self.read_uint().map(|u| u as isize)
         } else {
-            let (abs, n_digits) = self._remained()[1..].iter()
+            let (abs, n_digits) = self.remaining()[1..].iter()
                 .map_while(|b| b.is_ascii_digit().then(|| *b - b'0'))
                 .fold((0, 0), |(abs, n), d| (abs*10+d as isize, n+1));
             (n_digits > 0).then(|| {

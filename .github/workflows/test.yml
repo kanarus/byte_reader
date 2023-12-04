@@ -2,8 +2,7 @@ name: test
 on:
   pull_request:
   push:
-      branches:
-        - main
+    branches: [main]
 
 jobs:
   cargo-test:
@@ -14,7 +13,7 @@ jobs:
         features: ["location", "text", "location,text"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -23,12 +22,9 @@ jobs:
           override:  true
 
       - name: Test in vanilla
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        working-directory: dev
+        run:  cargo test
 
       - name: Test with features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features ${{ matrix.features }}
+        working-directory: dev
+        run:  cargo test --features ${{ matrix.features }}
