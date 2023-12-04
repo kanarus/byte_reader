@@ -2,8 +2,7 @@ name: check
 on:
   pull_request:
   push:
-      branches:
-        - main
+    branches: [main]
 
 jobs:
   cargo-check:
@@ -11,10 +10,11 @@ jobs:
 
     strategy:
       matrix:
-        features: ["location", "text", "location,text"]
+        directory: ["package", "dev"]
+        features:  ["location", "text", "location,text"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -23,11 +23,13 @@ jobs:
           override:  true
 
       - name: Check in vanilla
+        working-directory: ${{ matrix.directory }}
         uses: actions-rs/cargo@v1
         with:
           command: check
 
       - name: Check with features
+        working-directory: ${{ matrix.directory }}
         uses: actions-rs/cargo@v1
         with:
           command: check

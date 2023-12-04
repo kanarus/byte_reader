@@ -2,8 +2,7 @@ name: test
 on:
   pull_request:
   push:
-      branches:
-        - main
+    branches: [main]
 
 jobs:
   cargo-test:
@@ -14,7 +13,7 @@ jobs:
         features: ["location", "text", "location,text"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -23,11 +22,13 @@ jobs:
           override:  true
 
       - name: Test in vanilla
+        working-directory: dev
         uses: actions-rs/cargo@v1
         with:
           command: test
 
       - name: Test with features
+        working-directory: dev
         uses: actions-rs/cargo@v1
         with:
           command: test
