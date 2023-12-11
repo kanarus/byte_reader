@@ -10,9 +10,6 @@ pub struct Reader<'b> {
     #[cfg(feature="location")] pub column: usize,
 }
 
-unsafe impl<'b> Send for Reader<'b> {}
-unsafe impl<'b> Sync for Reader<'b> {}
-
 impl<'b> Reader<'b> {
     pub fn new(content: &'b (impl AsRef<[u8]> + ?Sized)) -> Self {
         let buf = content.as_ref();
