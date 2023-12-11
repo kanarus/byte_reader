@@ -1,10 +1,7 @@
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
-use core::slice;
-use std::marker::PhantomData;
-
-pub struct Reader<'b> {__: PhantomData<&'b()>,
-    head: *const u8,
+pub struct Reader<'b> {
+    buf:  &'b [u8],
     size: usize,
     pub index: usize,
     /// Line of current parsing point
@@ -18,10 +15,10 @@ unsafe impl<'b> Sync for Reader<'b> {}
 
 impl<'b> Reader<'b> {
     pub fn new(content: &'b (impl AsRef<[u8]> + ?Sized)) -> Self {
-        let slice = content.as_ref();
-        Self {__: PhantomData,
-            head:  slice.as_ptr(),
-            size:  slice.len(),
+        let buf = content.as_ref();
+        Self {
+            buf,
+            size:  buf.len(),
             index: 0,
             #[cfg(feature="location")] line:   1,
             #[cfg(feature="location")] column: 1,
@@ -29,18 +26,17 @@ impl<'b> Reader<'b> {
     }
 
     #[inline(always)] pub fn remaining(&self) -> &[u8] {
-        unsafe {slice::from_raw_parts(self.head.add(self.index), self.size - self.index)}
+        unsafe {self.buf.get_unchecked(self.index..)}
     }
-
-    #[inline(always)] unsafe fn _get_unchecked(&self, index: usize) -> &u8 {
-        &*self.head.add(index)
+    #[inline(always)] unsafe fn get_unchecked(&self, index: usize) -> &u8 {
+        self.buf.get_unchecked(index)
     }
 
     #[inline] fn advance_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] {
             let mut line   = self.line;
             let mut column = self.column;
-            for b in unsafe {slice::from_raw_parts(self.head.add(self.index), n)} {
+            for b in unsafe {self.buf.get_unchecked(self.index..(self.index + n))} {
                 if &b'\n' != b {
                     column += 1
                 } else {
@@ -57,12 +53,12 @@ impl<'b> Reader<'b> {
             let mut line   = self.line;
             let mut column = self.column;
             for i in 1..=n {let here = self.index - i;
-                if self._get_unchecked(here) != &b'\n' {
+                if self.get_unchecked(here) != &b'\n' {
                     column -= 1
                 } else {
                     line -= 1; column = 'c: {
                         for j in 1..=here {
-                            if self._get_unchecked(here - j) == &b'\n' {break 'c j}
+                            if self.get_unchecked(here - j) == &b'\n' {break 'c j}
                         }; here + 1
                     }
                 }
@@ -96,14 +92,14 @@ impl<'b> Reader<'b> {
     #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
         let start = self.index;
         self.skip_while(condition);
-        unsafe {slice::from_raw_parts(self.head.add(start), self.index - start)}
+        unsafe {self.buf.get_unchecked(start..self.index)}
     }
 
     /// Read next byte, or return None if the remaining bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.index;
         self.advance_by(1);
-        (self.index != here).then(|| *unsafe{ self._get_unchecked(here)})
+        (self.index != here).then(|| *unsafe{ self.get_unchecked(here)})
     }
     /// Read next byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
@@ -113,15 +109,15 @@ impl<'b> Reader<'b> {
 
     /// Peek next byte (without consuming)
     #[inline(always)] pub fn peek(&self) -> Option<&u8> {
-        (self.size - self.index > 0).then(|| unsafe {self._get_unchecked(self.index)})
+        (self.size - self.index > 0).then(|| unsafe {self.get_unchecked(self.index)})
     }
     /// Peek next byte of next byte (without consuming)
     #[inline] pub fn peek2(&self) -> Option<&u8> {
-        (self.size - self.index > 1).then(|| unsafe {self._get_unchecked(self.index + 1)})
+        (self.size - self.index > 1).then(|| unsafe {self.get_unchecked(self.index + 1)})
     }
     /// Peek next byte of next byte of next byte (without consuming)
     pub fn peek3(&self) -> Option<&u8> {
-        (self.size - self.index > 2).then(|| unsafe {self._get_unchecked(self.index + 2)})
+        (self.size - self.index > 2).then(|| unsafe {self.get_unchecked(self.index + 2)})
     }
 
     /// Read `token` if the remaining bytes start with it
@@ -129,7 +125,7 @@ impl<'b> Reader<'b> {
         let token = token.as_ref();
         let n = token.len();
         (self.size - self.index >= n && unsafe {
-            slice::from_raw_parts(self.head.add(self.index), n)
+            self.buf.get_unchecked(self.index..(self.index + n))
         } == token).then(|| self.advance_unchecked_by(n))
     }
     /// Read the first token in `tokens` that matches the start with the remaining bytes, and returns the index of the (matched) token, or `None` if none matches
@@ -176,7 +172,7 @@ impl<'b> Reader<'b> {
 
         self.advance_unchecked_by(eoq + 1);
 
-        Some(unsafe {slice::from_raw_parts(self.head.add(self.index - eoq), content_len)})
+        Some(unsafe {self.buf.get_unchecked((self.index - eoq)..(self.index - eoq + content_len))})
     }
 
     /// Read an unsigned integer literal like `42`, `123` as `usize` if found
