@@ -1,6 +1,6 @@
 [package]
 name          = "byte_reader"
-version       = "1.2.2"
+version       = "2.0.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 documentation = "https://docs.rs/byte_reader"
@@ -10,11 +10,11 @@ readme        = "README.md"
 license       = "MIT"
 description   = "A minimal byte-by-byte reader for parsing input"
 keywords      = ["minimal", "lightweight", "bytes", "reader", "parser"]
-categories    = ["parsing", "encoding", "rust-patterns", "text-processing"]
+categories    = ["parsing", "encoding", "rust-patterns", "text-processing", "no-std::no-alloc"]
 
 [features]
 location      = []
 text          = []
 
 ### DEBUG ###
-#default = ["location", "text"]
+default = ["location", "text"]

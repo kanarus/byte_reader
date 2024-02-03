@@ -1,3 +1,5 @@
+#![no_std]
+
 #![doc(html_root_url = "https://docs.rs/byte_reader")]
 
 pub struct Reader<'b> {
@@ -11,8 +13,7 @@ pub struct Reader<'b> {
 }
 
 impl<'b> Reader<'b> {
-    pub fn new(content: &'b (impl AsRef<[u8]> + ?Sized)) -> Self {
-        let buf = content.as_ref();
+    pub fn new(buf: &'b [u8]) -> Self {
         Self {
             buf,
             size:  buf.len(),
@@ -139,23 +140,23 @@ impl<'b> Reader<'b> {
 
 #[cfg(feature="text")]
 impl<'b> Reader<'b> {
-    /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `String` if found
-    #[inline] pub fn read_camel(&mut self) -> Option<String> {
-        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec();
+    /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `&str` if found
+    #[inline] pub fn read_camel(&mut self) -> Option<&str> {
+        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z'`
-        (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
+        (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
-    /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `String` if found
-    #[inline] pub fn read_snake(&mut self) -> Option<String> {
-        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_')).to_vec();
+    /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `&str` if found
+    #[inline] pub fn read_snake(&mut self) -> Option<&str> {
+        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
-        (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
+        (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
-    /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `String` if found
-    #[inline] pub fn read_kebab(&mut self) -> Option<String> {
-        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-')).to_vec();
+    /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `&str` if found
+    #[inline] pub fn read_kebab(&mut self) -> Option<&str> {
+        let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'-'`
-        (ident_bytes.len() > 0).then(|| unsafe {String::from_utf8_unchecked(ident_bytes)})
+        (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
 
     /// Read all bytes enclosed between `left` and `right`, then consume `left`, the bytes and `right`, and return the bytes.
