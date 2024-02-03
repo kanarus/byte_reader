@@ -20,4 +20,4 @@ location      = []
 text          = []
 
 ### DEBUG ###
-default = ["location", "text"]
+#default = ["location", "text"]
