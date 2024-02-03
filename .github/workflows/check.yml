@@ -10,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        directory: ["package", "dev"]
+        directory: ["package", "test"]
         features:  ["location", "text", "location,text"]
 
     steps:
