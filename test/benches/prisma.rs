@@ -18,7 +18,7 @@ datasource db {
     use std::format as f;
 
     b.iter(|| {
-        let mut r = byte_reader::Reader::new(SCHEMA);
+        let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
         assert_eq!(Schema::parse(&mut r), Schema {
             generator_client: GeneratorClient {
                 provider: f!("qujila"),

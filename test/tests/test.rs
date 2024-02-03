@@ -1,11 +1,11 @@
 use byte_reader::Reader;
 
 #[test] fn test_whitespace() {
-    let mut r = Reader::new(" ");
+    let mut r = Reader::new(b" ");
     r.skip_whitespace();
     assert!(r.remaining().is_empty());
 
-    let mut r = Reader::new("  a");
+    let mut r = Reader::new(b"  a");
     r.skip_whitespace();
     assert_eq!(r.remaining(), b"a");
 }
@@ -18,7 +18,7 @@ use byte_reader::Reader;
 }
 
 #[test] fn test_advance() {
-    let mut r = Reader::new("Hello, world!");
+    let mut r = Reader::new(b"Hello, world!");
 
     r.advance_by(1);
     assert_eq!(r.remaining(), b"ello, world!");
@@ -28,7 +28,7 @@ use byte_reader::Reader;
 }
 
 #[test] fn test_unwind() {
-    let mut r = Reader::new("Hello, world!\nMy name is byte_reader!");
+    let mut r = Reader::new(b"Hello, world!\nMy name is byte_reader!");
     r.read_while(|b| b != &b'\n');
     assert_eq!(r.remaining(), b"\nMy name is byte_reader!");
     #[cfg(feature="location")] assert_eq!(r.line,   1);
@@ -46,7 +46,7 @@ use byte_reader::Reader;
     #[cfg(feature="location")] assert_eq!(r.line,   1);
     #[cfg(feature="location")] assert_eq!(r.column, 13);
 
-    let mut r = Reader::new("Hello!\nMy name is!\nkanarus!");
+    let mut r = Reader::new(b"Hello!\nMy name is!\nkanarus!");
     r.read_while(|b| b != &b'\n');
     r.advance_by(1);
     r.read_while(|b| b != &b'\n');
@@ -66,7 +66,7 @@ use byte_reader::Reader;
 }
 
 #[test] fn test_read_while() {
-    let mut r = Reader::new("Hello,  world!");
+    let mut r = Reader::new(b"Hello,  world!");
 
     let read = r.read_while(|b| !b.is_ascii_whitespace());
     assert_eq!(read, b"Hello,");
@@ -87,7 +87,7 @@ use byte_reader::Reader;
 
 #[cfg(feature="text")]
 #[test] fn test_read_ident() {
-    let mut r = Reader::new("Hello, world! I am a Reader!");
+    let mut r = Reader::new(b"Hello, world! I am a Reader!");
     assert_eq!(r.remaining(), b"Hello, world! I am a Reader!");
 
     let ident = r.read_snake().unwrap();
@@ -106,18 +106,18 @@ use byte_reader::Reader;
 
 #[cfg(feature="text")]
 #[test] fn test_read_quoted() {
-    let mut r = Reader::new("");
+    let mut r = Reader::new(b"");
     assert_eq!(r.read_quoted_by(b'"', b'"'), None);
     assert_eq!(r.remaining(), b"");
 
-    let mut r = Reader::new("Yeah, \"Hello!");
+    let mut r = Reader::new(b"Yeah, \"Hello!");
     assert_eq!(r.read_quoted_by(b'"', b'"'), None);
     r.consume("Yeah, ").unwrap();
     assert_eq!(r.remaining(), b"\"Hello!");
     assert_eq!(r.read_quoted_by(b'"', b'"'), None);
     assert_eq!(r.remaining(), b"\"Hello!");
 
-    let mut r = Reader::new("\
+    let mut r = Reader::new(b"\
         \"Hello,\" (He said,) \"I am Reader!\"\
     ");
 
@@ -149,19 +149,19 @@ use byte_reader::Reader;
 
 #[cfg(feature="text")]
 #[test] fn test_read_int() {
-    let mut r = Reader::new("42");
+    let mut r = Reader::new(b"42");
     assert_eq!(r.read_int(), Some(42));
     assert!(r.remaining().is_empty());
 
-    let mut r = Reader::new("-42");
+    let mut r = Reader::new(b"-42");
     assert_eq!(r.read_int(), Some(-42));
     assert!(r.remaining().is_empty());
 
-    let mut r = Reader::new("-a");
+    let mut r = Reader::new(b"-a");
     assert_eq!(r.read_int(), None);
     assert_eq!(r.remaining(), b"-a");
 
-    let mut r = Reader::new("\
+    let mut r = Reader::new(b"\
         model Post {\n\
           title     String @db.VarChar(200)\n\
           n_authors Int    @default(1)\n\

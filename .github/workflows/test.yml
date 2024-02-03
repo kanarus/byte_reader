@@ -22,9 +22,9 @@ jobs:
           override:  true
 
       - name: Test in vanilla
-        working-directory: dev
+        working-directory: test
         run:  cargo test
 
       - name: Test with features
-        working-directory: dev
+        working-directory: test
         run:  cargo test --features ${{ matrix.features }}

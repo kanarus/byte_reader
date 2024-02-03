@@ -3,7 +3,7 @@ use byte_reader::Reader;
 #[cfg(not(feature="location"))] fn main() {
     // Get a input from a File, standard input, or others
     // Input must implement `AsRef<[u8]>`
-    let sample_input = "Hello,    byte_reader!";
+    let sample_input = "Hello,    byte_reader!".as_bytes();
 
     // Create mutable `r`
     let mut r = Reader::new(sample_input);
@@ -21,7 +21,7 @@ use byte_reader::Reader;
 }
 
 #[cfg(feature="location")] fn main() {
-    let mut r = Reader::new("Hello,    byte_reader!");
+    let mut r = Reader::new(b"Hello,    byte_reader!");
 
     r.consume("Hello").unwrap();
     r.consume(",").unwrap();

@@ -1,10 +1,10 @@
 [package]
-name    = "byte_reader_dev"
+name    = "byte_reader_test"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-byte_reader = { version = "1.2", path = "../package" }
+byte_reader = { version = "2.0", path = "../package" }
 
 [features]
 text     = ["byte_reader/text"]

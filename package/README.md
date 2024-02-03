@@ -11,6 +11,8 @@ Following situation:
 
 > I want to read and parse some input, but it's **not so large-scale** parsing task, so I'd like to avoid adding a *heavyweight* crate like [nom](https://crates.io/crates/nom) or [nom8](https://crates.io/crates/nom8) to my `dependencies` ...
 
+Of course, `byte_reader` supports *no std* environment.
+
 <br/>
 
 <h2><a href="https://github.com/kana-rus/byte_reader/blob/main/examples/usage.rs">Usage</a></h2>
@@ -19,11 +21,10 @@ Following situation:
 use byte_reader::Reader;
 
 fn main() {
-    // Get a input from a File, standard input, or others
-    // Input must implement `AsRef<[u8]>`
-    let sample_input = "Hello,    byte_reader!";
+    // Get an input `&[u8]` from a File, standard input, or others
+    let sample_input = "Hello,    byte_reader!".as_bytes();
 
-    // Create mutable `r`
+    // Create mutable `r` for the input
     let mut r = Reader::new(sample_input);
 
     // Use some simple operations
@@ -53,13 +54,6 @@ fn main() {
 <br/>
 
 ## Features
-### `"text"`
-
-Some utility methods for text-parsing are available：
-
-  - `read_quoted_by`
-  - `read_uint`, `read_int`
-  - `read_camel`, `read_snake`, `read_kebab`
 
 ### `"location"`
 
@@ -85,6 +79,14 @@ fn main() {
     println!("In the input, the name starts at column {name_column} of line {name_line} (index: {index})");
 }
 ```
+
+### `"text"`
+
+Some utility methods for text-parsing are available：
+
+  - `read_quoted_by`
+  - `read_uint`, `read_int`
+  - `read_camel`, `read_snake`, `read_kebab`
 
 <br/>
 
