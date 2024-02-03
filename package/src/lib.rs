@@ -6,8 +6,10 @@ pub struct Reader<'b> {
     buf:  &'b [u8],
     size: usize,
     pub index: usize,
+    /// **`location` feature required**\
     /// Line of current parsing point
     #[cfg(feature="location")] pub line: usize,
+    /// **`location` feature required**\
     /// Column of current parsing point
     #[cfg(feature="location")] pub column: usize,
 }
@@ -140,18 +142,21 @@ impl<'b> Reader<'b> {
 
 #[cfg(feature="text")]
 impl<'b> Reader<'b> {
+    /// **`text` feature required**\
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `&str` if found
     #[inline] pub fn read_camel(&mut self) -> Option<&str> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z'`
         (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
+    /// **`text` feature required**\
     /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `&str` if found
     #[inline] pub fn read_snake(&mut self) -> Option<&str> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
         (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
+    /// **`text` feature required**\
     /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `&str` if found
     #[inline] pub fn read_kebab(&mut self) -> Option<&str> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-'));
@@ -159,6 +164,7 @@ impl<'b> Reader<'b> {
         (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
 
+    /// **`text` feature required**\
     /// Read all bytes enclosed between `left` and `right`, then consume `left`, the bytes and `right`, and return the bytes.
     /// 
     /// Or, returns `None` if `left` or `right` is not found in remaining bytes.
@@ -173,6 +179,7 @@ impl<'b> Reader<'b> {
         Some(unsafe {self.buf.get_unchecked((self.index - eoq)..(self.index - eoq + content_len))})
     }
 
+    /// **`text` feature required**\
     /// Read an unsigned integer literal like `42`, `123` as `usize` if found
     /// 
     /// - Panics if the integer is larger than `usize::MAX`
@@ -180,6 +187,7 @@ impl<'b> Reader<'b> {
         let digits = self.read_while(|b| b.is_ascii_digit());
         (digits.len() > 0).then(|| digits.into_iter().fold(0, |uint, d| uint*10 + (*d-b'0') as usize))
     }
+    /// **`text` feature required**\
     /// Read an integer literal like `42`, `-1111` as `isize` if found
     /// 
     /// - Panics if not `isize::MIN` <= {the integer} <= `isize::MAX`
