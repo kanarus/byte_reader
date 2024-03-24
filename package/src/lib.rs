@@ -14,6 +14,10 @@ pub struct Reader<'b> {
     #[cfg(feature="location")] pub column: usize,
 }
 
+#[inline(always)] pub const unsafe fn detatched<'d>(b: &[u8]) -> &'d [u8] {
+    unsafe {core::slice::from_raw_parts(b.as_ptr(), b.len())}
+}
+
 impl<'b> Reader<'b> {
     pub fn new(buf: &'b [u8]) -> Self {
         Self {
@@ -89,13 +93,19 @@ impl<'b> Reader<'b> {
         self.skip_while(u8::is_ascii_whitespace)
     }
     /// Read next byte while the condition holds on it
-    #[inline] pub fn read_while(&mut self, condition: impl Fn(&u8)->bool) -> &[u8] {
+    #[inline] pub fn read_while<'x,
+        #[cfg(feature="detached")] 'r,
+        #[cfg(not(feature="detached"))] 'r: 'x,
+    >(&'r mut self, condition: impl Fn(&u8)->bool) -> &'x [u8] {
         let start = self.index;
         self.skip_while(condition);
-        unsafe {self.buf.get_unchecked(start..self.index)}
+        unsafe {detatched(self.buf.get_unchecked(start..self.index))}
     }
     /// Read through until the `pattern` comes in front of reader.
-    #[inline] pub fn read_until(&mut self, pattern: &[u8]) -> &[u8] {
+    #[inline] pub fn read_until<'x,
+        #[cfg(feature="detached")] 'r,
+        #[cfg(not(feature="detached"))] 'r: 'x,
+    >(&'r mut self, pattern: &[u8]) -> &'x [u8] {
         let start = self.index;
         let pat_len = pattern.len();
 
@@ -104,14 +114,14 @@ impl<'b> Reader<'b> {
             unsafe {
                 if self.buf.get_unchecked(i..i+pat_len) == pattern {
                     self.advance_unchecked_by(i - self.index);
-                    return self.buf.get_unchecked(start..self.index)
+                    return detatched(self.buf.get_unchecked(start..self.index))
                 }
             }
             i += 1
         }
 
         self.advance_unchecked_by(self.size - self.index);
-        unsafe {self.buf.get_unchecked(start..self.size)}
+        unsafe {detatched(self.buf.get_unchecked(start..self.size))}
     }
 
     /// Read next byte, or return None if the remaining bytes is empty
@@ -163,21 +173,30 @@ impl<'b> Reader<'b> {
 impl<'b> Reader<'b> {
     /// **`text` feature required**\
     /// Read a `camelCase` word like `helloWorld`, `userID`, ... as `&str` if found
-    #[inline] pub fn read_camel(&mut self) -> Option<&str> {
+    #[inline] pub fn read_camel<'x,
+        #[cfg(feature="detached")] 'r,
+        #[cfg(not(feature="detached"))] 'r: 'x,
+    >(&'r mut self) -> Option<&'x str> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z'`
         (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
     /// **`text` feature required**\
     /// Read a `snake_case` word like `hello_world`, `user_id`, ... as `&str` if found
-    #[inline] pub fn read_snake(&mut self) -> Option<&str> {
+    #[inline] pub fn read_snake<'x,
+        #[cfg(feature="detached")] 'r,
+        #[cfg(not(feature="detached"))] 'r: 'x,
+    >(&'r mut self) -> Option<&'x str> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'_'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'_'`
         (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
     }
     /// **`text` feature required**\
     /// Read a `kebeb-case` word like `hello-world`, `Content-Type`, ... as `&str` if found
-    #[inline] pub fn read_kebab(&mut self) -> Option<&str> {
+    #[inline] pub fn read_kebab<'x,
+        #[cfg(feature="detached")] 'r,
+        #[cfg(not(feature="detached"))] 'r: 'x,
+    >(&'r mut self) -> Option<&'x str> {
         let ident_bytes = self.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'-'));
         // SAFETY: `ident_bytes` is consists of `b'a'..=b'z' | b'A'..=b'Z' | b'-'`
         (ident_bytes.len() > 0).then(|| unsafe {core::str::from_utf8_unchecked(ident_bytes)})
@@ -187,15 +206,19 @@ impl<'b> Reader<'b> {
     /// Read all bytes enclosed between `left` and `right`, then consume `left`, the bytes and `right`, and return the bytes.
     /// 
     /// Or, returns `None` if `left` or `right` is not found in remaining bytes.
-    #[inline] pub fn read_quoted_by(&mut self, left: u8, right: u8) -> Option<&[u8]> {
+    #[inline] pub fn read_quoted_by<'x,
+        #[cfg(feature="detached")] 'r,
+        #[cfg(not(feature="detached"))] 'r: 'x,
+    >(&'r mut self, left: u8, right: u8) -> Option<&'x [u8]> {
         if self.peek()? != &left {return None}
         let content_len = self.remaining()[1..].iter().take_while(|b| b != &&right).count();
         let eoq /* end of quotation */ = 0 + content_len + 1;
         if self.remaining().get(eoq)? != &right {return None}
 
         self.advance_unchecked_by(eoq + 1);
-
-        Some(unsafe {self.buf.get_unchecked((self.index - eoq)..(self.index - eoq + content_len))})
+        Some(unsafe {detatched(self.buf.get_unchecked(
+            (self.index - eoq)..(self.index - eoq + content_len)
+        ))})
     }
 
     /// **`text` feature required**\
