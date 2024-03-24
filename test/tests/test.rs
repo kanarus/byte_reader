@@ -91,10 +91,14 @@ use byte_reader::Reader;
     let read = r.read_until(b" ");
     assert_eq!(read,          b"Hello,");
     assert_eq!(r.remaining(), b" world!");
+    #[cfg(feature="location")]
+    assert_eq!(r.column,     7);
 
     let read = r.read_until(b"rl");
     assert_eq!(read,          b" wo");
     assert_eq!(r.remaining(), b"rld!");
+    #[cfg(feature="location")]
+    assert_eq!(r.column,     10);
 
 
     let mut r = Reader::new(b"Hello, world!");
@@ -103,6 +107,8 @@ use byte_reader::Reader;
     let read = r.read_until(b"rl");
     assert_eq!(read,          b", wo");
     assert_eq!(r.remaining(), b"rld!");
+    #[cfg(feature="location")]
+    assert_eq!(r.column,     10);
 
 
     let mut r = Reader::new(b"Hello, world!");
@@ -110,6 +116,8 @@ use byte_reader::Reader;
     let read = r.read_until(b"");
     assert_eq!(read,          b"");
     assert_eq!(r.remaining(), b"Hello, world!");
+    #[cfg(feature="location")]
+    assert_eq!(r.column,     1);
 
 
     let mut r = Reader::new(b"Hello, world!");
@@ -117,6 +125,8 @@ use byte_reader::Reader;
     let read = r.read_until(b"xyz");
     assert_eq!(read,          b"Hello, world!");
     assert_eq!(r.remaining(), b"");
+    #[cfg(feature="location")]
+    assert_eq!(r.column,     14);
 }
 
 #[cfg(feature="text")]

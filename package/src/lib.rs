@@ -98,15 +98,19 @@ impl<'b> Reader<'b> {
     #[inline] pub fn read_until(&mut self, pattern: &[u8]) -> &[u8] {
         let start = self.index;
         let pat_len = pattern.len();
-        while self.index + pat_len <= self.size {
+
+        let mut i = self.index;
+        while i+pat_len <= self.size {
             unsafe {
-                if self.buf.get_unchecked(self.index..self.index + pat_len) == pattern {
+                if self.buf.get_unchecked(i..i+pat_len) == pattern {
+                    self.advance_unchecked_by(i - self.index);
                     return self.buf.get_unchecked(start..self.index)
                 }
             }
-            self.index += 1
+            i += 1
         }
-        self.index = self.size;
+
+        self.advance_unchecked_by(self.size - self.index);
         unsafe {self.buf.get_unchecked(start..self.size)}
     }
 
