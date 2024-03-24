@@ -44,7 +44,7 @@ fn main() {
 
 ## Operations
 - `remaining`
-- `read_while`
+- `read_while`, `read_until`
 - `next`, `next_if`
 - `peek`, `peek2`, `peek3`
 - `advance_by`, `unwind_by`
@@ -87,6 +87,10 @@ Some utility methods for text-parsing are available：
   - `read_quoted_by`
   - `read_uint`, `read_int`
   - `read_camel`, `read_snake`, `read_kebab`
+
+### `"detahced"` (**unsafe**)
+
+Make read bytes *detahced* by `read_*` operations. This resolves issue around borrowing `Reader`.
 
 <br/>
 
