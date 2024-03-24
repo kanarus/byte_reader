@@ -129,6 +129,16 @@ use byte_reader::Reader;
     assert_eq!(r.column,     14);
 }
 
+#[cfg(feature="detached")]
+#[test] fn detached_ref() {
+    let mut r = Reader::new(b"Hello, world!");
+
+    let some = r.read_while(u8::is_ascii);
+    if r.peek().is_some() {
+        let _ = some;
+    }
+}
+
 #[cfg(feature="text")]
 #[test] fn test_read_ident() {
     let mut r = Reader::new(b"Hello, world! I am a Reader!");

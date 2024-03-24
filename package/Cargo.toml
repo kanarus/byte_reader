@@ -18,6 +18,7 @@ all-features  = true
 [features]
 location      = []
 text          = []
+detached      = []
 
 ### DEBUG ###
-#default = ["location", "text"]
+#default = ["location", "text", "detached"]
