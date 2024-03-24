@@ -2,8 +2,8 @@
 <p align="center">A <strong>minimal</strong> byte-by-byte reader for parsing input.</p>
 
 <div align="right">
-    <img alt="build check status of byte_reader" src="https://github.com/kana-rus/byte_reader/actions/workflows/check.yml/badge.svg"/>
     <img alt="test status of byte_reader" src="https://github.com/kana-rus/byte_reader/actions/workflows/test.yml/badge.svg"/>
+    <a href="https://crates.io/crates/byte_reader"><img alt="crates.io" src="https://img.shields.io/crates/v/byte_reader" /></a>
 </div>
 
 ## Use case
@@ -90,7 +90,7 @@ Some utility methods for text-parsing are available：
 
 ### `"detahced"` (**unsafe**)
 
-Make read bytes *detahced* by `read_*` operations. This resolves issue around borrowing `Reader`.
+Make read bytes *detahced* in `read_*` operations. This resolves issue around borrowing `Reader`.
 
 <br/>
 
