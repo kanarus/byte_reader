@@ -94,12 +94,31 @@ impl<'b> Reader<'b> {
         self.skip_while(condition);
         unsafe {self.buf.get_unchecked(start..self.index)}
     }
+    /// Read through until the `pattern` comes in front of reader.
+    #[inline] pub fn read_until(&mut self, pattern: &[u8]) -> &[u8] {
+        let start = self.index;
+        let pat_len = pattern.len();
+
+        let mut i = self.index;
+        while i+pat_len <= self.size {
+            unsafe {
+                if self.buf.get_unchecked(i..i+pat_len) == pattern {
+                    self.advance_unchecked_by(i - self.index);
+                    return self.buf.get_unchecked(start..self.index)
+                }
+            }
+            i += 1
+        }
+
+        self.advance_unchecked_by(self.size - self.index);
+        unsafe {self.buf.get_unchecked(start..self.size)}
+    }
 
     /// Read next byte, or return None if the remaining bytes is empty
     #[inline] pub fn next(&mut self) -> Option<u8> {
         let here = self.index;
         self.advance_by(1);
-        (self.index != here).then(|| *unsafe{ self.get_unchecked(here)})
+        (self.index != here).then(|| *unsafe {self.get_unchecked(here)})
     }
     /// Read next byte if the condition holds on it
     #[inline] pub fn next_if(&mut self, condition: impl Fn(&u8)->bool) -> Option<u8> {
