@@ -59,38 +59,13 @@ fn main() {
 
 You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
 
-```rust
-/* activate "location" feature */
-use byte_reader::Reader;
-
-fn main() {
-    let mut r = Reader::new("Hello,    byte_reader!");
-
-    r.consume("Hello").unwrap();
-    r.consume(",").unwrap();
-    r.skip_whitespace();
-    let name_line   = r.line;   // 1
-    let name_column = r.column; // 11
-    let name_index  = r.index;  // 10
-    let name = r.read_snake().unwrap(); // "byte_reader"
-    r.consume("!").unwrap();
-
-    println!("Greeted to `{name}`.");
-    println!("In the input, the name starts at column {name_column} of line {name_line} (index: {index})");
-}
-```
-
 ### `"text"`
 
 Some utility methods for text-parsing are available：
 
-  - `read_quoted_by`
-  - `read_uint`, `read_int`
-  - `read_camel`, `read_snake`, `read_kebab`
-
-### `"detahced"` (**unsafe**)
-
-Make read bytes *detahced* in `read_*` operations. This resolves issue around borrowing `Reader`.
+- `read_quoted_by`
+- `read_uint`, `read_int`
+- `read_camel`, `read_snake`, `read_kebab`
 
 <br/>
 

@@ -1,6 +1,6 @@
 [package]
 name          = "byte_reader"
-version       = "2.1.0"
+version       = "3.0.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 documentation = "https://docs.rs/byte_reader"
@@ -18,7 +18,6 @@ all-features  = true
 [features]
 location      = []
 text          = []
-detached      = []
 
 ### DEBUG ###
-#default = ["location", "text", "detached"]
+#default = ["location", "text"]
