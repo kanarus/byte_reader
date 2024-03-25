@@ -57,7 +57,7 @@ fn main() {
 
 ### `"location"`
 
-You can track the reader's parsing location ( **line** and **column** ) in the input bytes.
+Enable tracking reader's location, **line** and **column** (1-origin), in the input bytes.
 
 ### `"text"`
 
