@@ -129,7 +129,6 @@ use byte_reader::Reader;
     assert_eq!(r.column,     14);
 }
 
-#[cfg(feature="detached")]
 #[test] fn detached_ref() {
     let mut r = Reader::new(b"Hello, world!");
 
