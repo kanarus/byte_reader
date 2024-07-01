@@ -17,7 +17,7 @@ datasource db {
     use prisma::*;
     use std::format as f;
 
-    b.iter(|| {
+    b.iter(|| for _ in 0..10 {
         let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
         assert_eq!(Schema::parse(&mut r), Schema {
             generator_client: GeneratorClient {

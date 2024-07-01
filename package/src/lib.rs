@@ -47,7 +47,7 @@ impl<'r> Reader<'r> {
         }
         self.index += n;
     }
-    #[cfg_attr(not(feature="location"), inline)] fn unwind_unchecked_by(&mut self, n: usize) {
+    #[inline] fn unwind_unchecked_by(&mut self, n: usize) {
         #[cfg(feature="location")] unsafe {
             let mut line   = self.line;
             let mut column = self.column;
@@ -94,7 +94,9 @@ impl<'r> Reader<'r> {
         unsafe {self.buf.get_unchecked(start..self.index)}
     }
     /// Read through until the `pattern` comes in front of reader.
-    #[inline] pub fn read_until(&mut self, pattern: &[u8]) -> &'r [u8] {
+    #[inline] pub fn read_until(&mut self, pattern: impl AsRef<[u8]>) -> &'r [u8] {
+        let pattern = pattern.as_ref();
+
         let start = self.index;
         let pat_len = pattern.len();
 
@@ -139,7 +141,7 @@ impl<'r> Reader<'r> {
     }
 
     /// Read `token` if the remaining bytes start with it
-    #[inline] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
+    #[inline(always)] pub fn consume(&mut self, token: impl AsRef<[u8]>) -> Option<()> {
         let token = token.as_ref();
         let n = token.len();
         (self.size - self.index >= n && unsafe {
@@ -147,7 +149,7 @@ impl<'r> Reader<'r> {
         } == token).then(|| self.advance_unchecked_by(n))
     }
     /// Read the first token in `tokens` that matches the start with the remaining bytes, and returns the index of the (matched) token, or `None` if none matches
-    pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
+    #[inline(always)] pub fn consume_oneof<const N: usize>(&mut self, tokens: [impl AsRef<[u8]>; N]) -> Option<usize> {
         for i in 0..tokens.len() {
             let token = tokens[i].as_ref();
             if self.remaining().starts_with(token) {
