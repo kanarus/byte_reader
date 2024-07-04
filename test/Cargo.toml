@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-byte_reader = { version = "3.0.0", path = "../package" }
+byte_reader = { path = "../package" }
 
 [features]
 text     = ["byte_reader/text"]
