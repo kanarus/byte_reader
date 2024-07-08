@@ -30,12 +30,8 @@ datasource db {
     });
 
     b.iter(|| {
-        let mut buf = Vec::with_capacity(10);
-        for _ in 0..10 {
-            let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
-            buf.push(Schema::parse(&mut r))
-        }
-        buf
+        let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
+        Schema::parse(&mut r)
     })
 }
 
