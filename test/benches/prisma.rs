@@ -15,19 +15,18 @@ datasource db {
 
 #[bench] fn read_a_schema_dot_prisma(b: &mut test::Bencher) {
     use prisma::*;
-    use std::format as f;
 
     b.iter(|| for _ in 0..10 {
         let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
         assert_eq!(Schema::parse(&mut r), Schema {
             generator_client: GeneratorClient {
-                provider: f!("qujila"),
-                output:   f!("../src/my_db_module"),
+                provider: "qujila",
+                output:   "../src/my_db_module",
             },
             datasource: Datasouce {
-                name:     f!("db"),
-                provider: f!("postgresql"),
-                url:      f!("DATABASE_URL"),
+                name:     "db",
+                provider: "postgresql",
+                url:      "DATABASE_URL",
             }
         })
     })
@@ -36,29 +35,29 @@ datasource db {
 mod prisma {
     use byte_reader::Reader;
 
-    pub trait Parse {
-        fn parse(r: &mut Reader) -> Self;
+    pub trait Parse<'p> {
+        fn parse<'r>(r: &'r mut Reader<'p>) -> Self;
     }
 
     #[cfg(feature="text")]
-    fn read_string(r: &mut Reader) -> Option<String> {
+    fn read_string<'r>(r: &mut Reader<'r>) -> Option<&'r str> {
         r.read_quoted_by(b'"', b'"')
-            .map(|bytes| String::from_utf8(bytes.to_vec()).unwrap())
+            .map(|bytes| std::str::from_utf8(bytes).unwrap())
     }
     #[cfg(not(feature="text"))]
-    fn read_string(r: &mut Reader) -> Option<String> {
+    fn read_string<'r>(r: &mut Reader<'r>) -> Option<&'r str> {
         r.consume("\"")?;
-        let string = String::from_utf8(r.read_while(|b| b != &b'"').to_vec()).unwrap();
+        let string = r.read_while(|b| b != &b'"');
         r.consume("\"").unwrap();
-        Some(string)
+        Some(std::str::from_utf8(string).unwrap())
     }
 
     #[derive(Debug, PartialEq)]
-    pub struct Schema {
-        pub generator_client: GeneratorClient,
-        pub datasource:       Datasouce,
-    } impl Parse for Schema {
-        fn parse(r: &mut Reader) -> Self {
+    pub struct Schema<'s> {
+        pub generator_client: GeneratorClient<'s>,
+        pub datasource:       Datasouce<'s>,
+    } impl<'p> Parse<'p> for Schema<'p> {
+        fn parse<'r>(r: &'r mut Reader<'p>) -> Self {
             r.skip_whitespace();
             let (mut g, mut d) = (None, None);
             while let Some(next) = r.peek() {
@@ -78,11 +77,11 @@ mod prisma {
     }
 
     #[derive(Debug, PartialEq)]
-    pub struct GeneratorClient {
-        pub provider: String,
-        pub output:   String,
-    } impl Parse for GeneratorClient {
-        fn parse(r: &mut Reader) -> Self {
+    pub struct GeneratorClient<'s> {
+        pub provider: &'s str,
+        pub output:   &'s str,
+    } impl<'p> Parse<'p> for GeneratorClient<'p> {
+        fn parse<'r>(r: &'r mut Reader<'p>) -> Self {
             r.consume("generator").unwrap(); r.skip_whitespace();
             r.consume("client").unwrap();    r.skip_whitespace();
             r.consume("{").unwrap();         r.skip_whitespace();
@@ -112,17 +111,17 @@ mod prisma {
     }
 
     #[derive(Debug, PartialEq)]
-    pub struct Datasouce {
-        pub name:     String,
-        pub provider: String,
-        pub url:      String,
-    } impl Parse for Datasouce {
-        fn parse(r: &mut Reader) -> Self {
+    pub struct Datasouce<'d> {
+        pub name:     &'d str,
+        pub provider: &'d str,
+        pub url:      &'d str,
+    } impl<'p> Parse<'p> for Datasouce<'p> {
+        fn parse<'r>(r: &'r mut Reader<'p>) -> Self {
             r.consume("datasource").unwrap();
             r.skip_whitespace();
 
-            let name = String::from_utf8(
-                r.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z')).to_vec()
+            let name = std::str::from_utf8(
+                r.read_while(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z'))
             ).unwrap();
             r.skip_whitespace();
 
