@@ -16,19 +16,26 @@ datasource db {
 #[bench] fn read_a_schema_dot_prisma(b: &mut test::Bencher) {
     use prisma::*;
 
-    b.iter(|| for _ in 0..10 {
-        let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
-        assert_eq!(Schema::parse(&mut r), Schema {
-            generator_client: GeneratorClient {
-                provider: "qujila",
-                output:   "../src/my_db_module",
-            },
-            datasource: Datasouce {
-                name:     "db",
-                provider: "postgresql",
-                url:      "DATABASE_URL",
-            }
-        })
+    let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
+    assert_eq!(Schema::parse(&mut r), Schema {
+        generator_client: GeneratorClient {
+            provider: "qujila",
+            output:   "../src/my_db_module",
+        },
+        datasource: Datasouce {
+            name:     "db",
+            provider: "postgresql",
+            url:      "DATABASE_URL",
+        }
+    });
+
+    b.iter(|| {
+        let mut buf = Vec::with_capacity(10);
+        for _ in 0..10 {
+            let mut r = byte_reader::Reader::new(SCHEMA.as_bytes());
+            buf.push(Schema::parse(&mut r))
+        }
+        buf
     })
 }
 

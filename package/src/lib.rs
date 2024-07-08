@@ -80,7 +80,9 @@ impl<'r> Reader<'r> {
 
     /// Skip next byte while `condition` holds on it
     #[inline] pub fn skip_while(&mut self, condition: impl Fn(&u8)->bool) {
-        let by = self.remaining().iter().take_while(|b| condition(b)).count();
+        let mut by = 0; for b in self.remaining() {
+            if condition(b) {by += 1} else {break}
+        }
         self.advance_unchecked_by(by)
     }
     /// `skip_while(u8::is_ascii_whitespace)`
